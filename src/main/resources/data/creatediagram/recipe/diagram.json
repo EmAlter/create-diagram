@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SM "
+  ],
+  "key": {
+    "S": { "item": "create:sturdy_sheet" },
+    "M": { "item": "create:precision_mechanism" }
+  },
+  "result": {
+    "id": "creatediagram:diagram",
+    "count": 1
+  }
+}
