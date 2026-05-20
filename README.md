@@ -44,6 +44,7 @@
 |---|---|
 | Pan Camera | Hold `Right Click` in an empty space and drag |
 | Zoom in/out | Mouse Wheel |
+| Scroll Menu Categories | Mouse Wheel |
 | Add an Object | Drag from the left Palette onto the Canvas |
 | Move an Object | Hold `Left Click` on the object and drag |
 | Connect Nodes | Hold `Left Click` from a node's output port to another node's input port |
@@ -73,4 +74,6 @@ This mod is built following strict **Data-Driven** architecture patterns:
 - Client-Server communication uses non-blocking `CustomPacketPayload` interfaces.
 - Fluid and item flow renderings bypass hardcoded checks, delegating ID analysis to `EmiStack`. If a gas or fluid is detected, it will automatically be formatted with the `mB` suffix.
 
-If you have suggestions, bugs to report, or want to contribute, feel free to open an **Issue** or a **Pull Request**!
+## 🐛 BUGS
+
+The mod is still in beta, if you have suggestions, bugs to report, or want to contribute, feel free to open an **Issue** or a **Pull Request**!
