@@ -17,6 +17,10 @@ import net.minecraft.world.item.Items;
 
 import java.util.*;
 
+/**
+ * Side panel that shows available items and categories. Supports searching, dragging items into the canvas,
+ * horizontal category scrolling and a scrollbar for the item list.
+ */
 public class PalettePanel {
     private final int width = 180;
     private final int height;
@@ -27,7 +31,6 @@ public class PalettePanel {
     private boolean isOpen = true;
     private float currentX = 0;
 
-    // NUOVO: Struttura dati semplificata (Mod -> Lista di Oggetti)
     private final Map<String, List<EmiStack>> modRegistry = new HashMap<>();
     private final List<String> availableMods = new ArrayList<>();
     private String selectedMod = "create";
@@ -41,6 +44,9 @@ public class PalettePanel {
     private EmiStack draggingStack = null;
     private EmiStack hoveredStack = null;
 
+    // Variables for horizontal category scrolling
+    private double categoryScrollOffset = 0;
+
     public PalettePanel(int height, Font font) {
         this.height = height;
         this.font = font;
@@ -51,7 +57,7 @@ public class PalettePanel {
         this.searchBox.setResponder(text -> this.scrollY = 0);
         buildRegistryCache();
     }
-    
+
     public boolean getIsOpen() { return isOpen; }
     public void setIsOpen(boolean isOpen) { this.isOpen = isOpen; }
 
@@ -59,7 +65,6 @@ public class PalettePanel {
         modRegistry.clear();
         availableMods.clear();
 
-        // Iterazione Master API EMI
         for (EmiStack emiStack : EmiApi.getIndexStacks()) {
             ResourceLocation id = emiStack.getId();
             String modid = id.getNamespace();
@@ -87,12 +92,18 @@ public class PalettePanel {
         guiGraphics.fill(0, 0, width, height, 0xFF222222);
         guiGraphics.fill(width, 0, width + 1, height, 0xFF000000);
 
-        int iconX = 10;
+        // --- Scissor region for category bar (clips icons outside the panel) ---
+        guiGraphics.enableScissor((int) currentX, 20, (int) currentX + width, 45);
+
+        int iconX = 10 - (int) this.categoryScrollOffset;
         for (String mod : availableMods) {
             if (mod.equals(selectedMod)) guiGraphics.fill(iconX - 2, 23, iconX + 18, 43, 0xFF555555);
             guiGraphics.renderItem(getModIcon(mod), iconX, 25);
             iconX += 24;
         }
+
+        guiGraphics.disableScissor();
+        // ---------------------------------------------------------------------------------
 
         this.searchBox.render(guiGraphics, localMouseX, mouseY, partialTick);
         renderItemsAndScrollbar(guiGraphics, localMouseX, mouseY, partialTick);
@@ -121,14 +132,13 @@ public class PalettePanel {
         int cols = 6;
         int iconSize = 24;
 
-        guiGraphics.enableScissor(0, listTop, (int)(currentX + width), height);
+        guiGraphics.enableScissor((int)currentX, listTop, (int)(currentX + width), height);
 
         String query = searchBox.getValue().toLowerCase();
         boolean isSearching = !query.isEmpty();
 
         List<EmiStack> itemsToRender = new ArrayList<>();
 
-        // Se stiamo cercando, prendiamo da TUTTE le mod. Altrimenti, solo dalla mod selezionata.
         if (isSearching) {
             for (List<EmiStack> items : modRegistry.values()) {
                 for (EmiStack stack : items) {
@@ -143,7 +153,6 @@ public class PalettePanel {
                     .toList());
         }
 
-        // Griglia uniforme senza interruzioni di categoria
         for (int i = 0; i < itemsToRender.size(); i++) {
             int r = i / cols, c = i % cols;
             int x = 10 + c * iconSize, y = yOffset + r * iconSize;
@@ -158,7 +167,6 @@ public class PalettePanel {
             }
         }
 
-        // Calcolo altezza totale per lo scorrimento
         int totalRows = itemsToRender.isEmpty() ? 0 : (itemsToRender.size() - 1) / cols + 1;
         int totalContentHeight = totalRows * iconSize;
 
@@ -179,7 +187,6 @@ public class PalettePanel {
 
     private ItemStack getModIcon(String modid) {
         return modIconCache.computeIfAbsent(modid, id -> {
-            // Casi hardcoded
             ResourceLocation res = switch (id) {
                 case "create" -> ResourceLocation.parse("create:wrench");
                 case "minecraft" -> ResourceLocation.parse("minecraft:grass_block");
@@ -191,7 +198,6 @@ public class PalettePanel {
                 return new ItemStack(BuiltInRegistries.ITEM.get(res));
             }
 
-            // Cerca il primo CreativeModeTab registrato dalla mod
             for (CreativeModeTab tab : net.neoforged.neoforge.common.CreativeModeTabRegistry.getSortedCreativeModeTabs()) {
                 ResourceLocation tabId = net.neoforged.neoforge.common.CreativeModeTabRegistry.getName(tab);
                 if (tabId != null && tabId.getNamespace().equals(id)) {
@@ -199,7 +205,6 @@ public class PalettePanel {
                 }
             }
 
-            // Fallback
             List<EmiStack> items = modRegistry.get(id);
             if (items != null && !items.isEmpty()) {
                 return items.get(new Random().nextInt(items.size())).getItemStack();
@@ -231,8 +236,9 @@ public class PalettePanel {
             this.searchBox.setFocused(false);
         }
 
-        if (mouseY >= 25 && mouseY <= 41) {
-            int iconX = 10;
+        // --- Category click handling with the current scroll offset applied ---
+        if (mouseY >= 23 && mouseY <= 45) {
+            int iconX = 10 - (int) this.categoryScrollOffset;
             for (String mod : availableMods) {
                 if (localX >= iconX && localX <= iconX + 16) {
                     this.selectedMod = mod;
@@ -267,6 +273,21 @@ public class PalettePanel {
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+        int localX = (int) (mouseX - currentX);
+
+        // --- Horizontal scrolling for categories ---
+        if (localX >= 0 && localX <= this.width && mouseY >= 20 && mouseY <= 45) {
+            int totalCategoriesWidth = this.availableMods.size() * 24;
+            int maxVisibleWidth = this.width - 20;
+            double maxCatScroll = Math.max(0, totalCategoriesWidth - maxVisibleWidth);
+
+            this.categoryScrollOffset -= scrollY * 20; // 20px per mouse wheel tick
+            this.categoryScrollOffset = Mth.clamp(this.categoryScrollOffset, 0, maxCatScroll);
+
+            return true;
+        }
+
+        // --- Vertical scrolling for item list ---
         if (isMouseOverPanel(mouseX, mouseY)) {
             this.scrollY = Mth.clamp(this.scrollY - (int) (scrollY * 25), 0, maxScroll);
             return true;
@@ -290,7 +311,7 @@ public class PalettePanel {
     public Item getDraggingItem() {
         if (draggingStack == null) return null;
         if (draggingStack.getKey() instanceof Item item) return item;
-        return net.minecraft.world.item.Items.WATER_BUCKET;
+        return Items.WATER_BUCKET;
     }
     public String getDraggingItemId() {
         if (draggingStack != null) {

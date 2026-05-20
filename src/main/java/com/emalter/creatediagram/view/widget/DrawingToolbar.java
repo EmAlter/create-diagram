@@ -5,6 +5,9 @@ import dev.emi.emi.api.stack.EmiStack;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 
+/**
+ * Small toolbar providing drawing tools (pen, line, eraser) and a color picker popup.
+ */
 public class DrawingToolbar {
     public enum Tool { PEN, LINE, ERASER }
     private Tool currentTool = Tool.PEN;
@@ -21,18 +24,21 @@ public class DrawingToolbar {
     public int getCurrentColor() { return currentDrawingColor; }
     public boolean isColorMenuOpen() { return isColorMenuOpen; }
 
+    /**
+     * Renders the toolbar and its popup color menu when open.
+     */
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, int screenWidth, int screenHeight, int paletteWidth, Font font) {
         Tool[] tools = Tool.values();
         int toolbarW = (tools.length * 24) + 4;
 
-        // Calcolo centro area utile: Palette + Metà dello spazio rimanente
+        // Compute centered area: palette + half of remaining space
         int startX = paletteWidth + ((screenWidth - paletteWidth) / 2) - (toolbarW / 2);
         int startY = screenHeight - 35;
 
         guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 300); // Toolbar sempre in primissimo piano
+        guiGraphics.pose().translate(0, 0, 300); // Always render toolbar on top
 
-        // Disegna sfondo Toolbar
+        // Draw toolbar background
         guiGraphics.fill(startX, startY, startX + toolbarW, startY + 26, 0xDD222222);
         guiGraphics.renderOutline(startX, startY, toolbarW, 26, 0xFF555555);
 
@@ -48,11 +54,11 @@ public class DrawingToolbar {
             guiGraphics.drawString(font, label, btnX + 7, btnY + 6, tools[i] == currentTool ? 0x000000 : 0xFFFFFF, false);
         }
 
-        // Render Popup Colori (Si apre sopra il bottone premuto)
+        // Render color popup (opens above the pressed button)
         if (isColorMenuOpen) {
             int menuW = (DYE_IDS.length * 20) + 4;
             int menuX = colorMenuAnchorX - (menuW / 2) + 10;
-            int menuY = colorMenuAnchorY - 30; // 30 pixel sopra la toolbar
+            int menuY = colorMenuAnchorY - 30; // 30 pixels above the toolbar
 
             guiGraphics.fill(menuX, menuY, menuX + menuW, menuY + 26, 0xEE222222);
             guiGraphics.renderOutline(menuX, menuY, menuW, 26, 0xFFFFAA00);
@@ -86,7 +92,7 @@ public class DrawingToolbar {
             int index = (int) ((mouseX - startX - 4) / 24);
             if (index >= 0 && index < tools.length) {
                 currentTool = tools[index];
-                // HOLD-TO-OPEN: Se clicchi su Pen o Line, apri il menu colori
+                // HOLD-TO-OPEN: clicking Pen or Line opens the color menu
                 if (currentTool == Tool.PEN || currentTool == Tool.LINE) {
                     isColorMenuOpen = true;
                     colorMenuAnchorX = startX + 4 + (index * 24);
@@ -106,7 +112,7 @@ public class DrawingToolbar {
             int menuX = colorMenuAnchorX - (menuW / 2) + 10;
             int menuY = colorMenuAnchorY - 30;
 
-            // Se rilasciamo il mouse sopra un colore, lo applichiamo
+            // If the mouse release occurred over a color, apply it
             if (mouseX >= menuX && mouseX <= menuX + menuW && mouseY >= menuY && mouseY <= menuY + 26) {
                 int index = (int) ((mouseX - menuX - 4) / 20);
                 if (index >= 0 && index < DYE_IDS.length) {

@@ -8,17 +8,18 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 public class ModDataComponents {
-
-    // Crea il registro specifico per i Data Component
+    /**
+     * Deferred register used to register custom data components for the mod.
+     */
     public static final DeferredRegister<DataComponentType<?>> DATA_COMPONENTS =
             DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, CreateDiagram.MODID);
 
-    // Registra il nostro componente personalizzato
+    // Register our custom data component
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<DiagramData>> DIAGRAM_DATA =
             DATA_COMPONENTS.register("diagram_data", () ->
                     DataComponentType.<DiagramData>builder()
-                            .persistent(DiagramData.CODEC)       // Usa il codec per salvare su disco
-                            .networkSynchronized(DiagramData.STREAM_CODEC) // Usa lo stream codec per inviare al server
+                            .persistent(DiagramData.CODEC)       // Use codec for disk persistence
+                            .networkSynchronized(DiagramData.STREAM_CODEC) // Use stream codec for network sync
                             .build()
             );
 

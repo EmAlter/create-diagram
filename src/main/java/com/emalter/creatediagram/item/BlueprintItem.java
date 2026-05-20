@@ -17,14 +17,13 @@ public class BlueprintItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-
-        // Controlliamo se stiamo eseguendo il codice sul Client (il gioco visivo)
+        // Only open the UI on the client side
         if (level.isClientSide()) {
-            // Chiamiamo il ponte client-side in modo sicuro
+            // Use the client bridge to safely open the diagram screen
             ClientBridge.openDiagramScreen(stack, hand);
         }
 
-        // Diciamo al gioco che l'azione ha avuto successo, attivando l'animazione della mano
+        // Notify the game the action succeeded to trigger the hand animation
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 }

@@ -20,7 +20,7 @@ public class DiagramScreen extends Screen {
     private final ItemStack blueprintStack;
     private final InteractionHand hand;
 
-    // Componenti UI separati
+    // UI components
     private CanvasPanel canvas;
     private PalettePanel palette;
 
@@ -46,7 +46,7 @@ public class DiagramScreen extends Screen {
             if (data.edges() != null && !data.edges().isEmpty()) {
                 this.canvas.getConnectionManager().setEdges(data.edges());
             }
-            // --- NUOVO: Carica i tratti salvati ---
+            // Load saved freehand strokes if present
             if (data.strokes() != null && !data.strokes().isEmpty()) {
                 this.canvas.setStrokes(data.strokes());
             }
@@ -58,23 +58,23 @@ public class DiagramScreen extends Screen {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // 1. Calcola dinamicamente la larghezza del menù in QUESTO frame
+        // 1. Compute palette width for this frame
         int currentPaletteWidth = this.palette.getIsOpen() ? 150 : 0;
 
         String draggingId = this.palette.getDraggingItemId();
         this.canvas.setPreviewItem(draggingId);
 
-        // 2. Passa la larghezza aggiornata al canvas (così la toolbar si centrerà sempre)
+        // 2. Pass the updated width to the canvas so the toolbar stays centered
         this.canvas.render(guiGraphics, mouseX, mouseY, partialTick, this.width, this.height, currentPaletteWidth);
 
-        // 3. ALZA IL LIVELLO Z DELLA PALETTE per coprire tassativamente gli oggetti della canvas
+        // 3. Elevate the palette Z so it overlays canvas elements
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(0, 0, 400);
         this.palette.render(guiGraphics, mouseX, mouseY, partialTick);
         guiGraphics.pose().popPose();
     }
 
-    // --- ROUTING DEGLI INPUT (Il vero lavoro del Controller) ---
+    // Input routing: forward events to palette or canvas appropriately
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -83,7 +83,7 @@ public class DiagramScreen extends Screen {
         } else {
             this.palette.unfocusSearch();
 
-            // Usa il metodo che hai creato nella palette per sapere se è aperta
+            // Use palette state to determine open width
             int paletteWidth = this.palette.getIsOpen() ? 150 : 0;
 
             boolean handled = this.canvas.mouseClicked(mouseX, mouseY, button, paletteWidth);
@@ -94,12 +94,12 @@ public class DiagramScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        // Se la palette sta gestendo lo scroll, invia l'evento a lei
+        // If the palette is handling scroll, forward drag to it
         if (this.palette.isScrolling()) {
             this.palette.mouseDragged(mouseX, mouseY, button, dragX, dragY);
             return true;
         }
-        // Altrimenti gestisci il canvas
+        // Otherwise, pass the drag to the canvas
         return this.canvas.mouseDragged(mouseX, mouseY, button, dragX, dragY);
     }
 
@@ -107,7 +107,7 @@ public class DiagramScreen extends Screen {
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         this.palette.setScrolling(false);
 
-        // 1. Rilascio di un NUOVO oggetto dalla libreria
+        // 1. Dropping a new item from the palette into the canvas
         if (button == 0 && this.palette.getDraggingItemId() != null) {
             if (!this.palette.isMouseOverPanel(mouseX, mouseY)) {
                 double worldX = canvas.getWorldX(mouseX) - 20;
@@ -116,7 +116,7 @@ public class DiagramScreen extends Screen {
                 int snappedX = Math.round((float)worldX / 20.0f) * 20;
                 int snappedY = Math.round((float)worldY / 20.0f) * 20;
 
-                // Estraiamo l'ID dell'oggetto prima del controllo
+                // Extract the dragging item id before validation
                 String itemId = this.palette.getDraggingItemId();
 
                 int targetW = canvas.getNodeWidth(itemId);
@@ -127,7 +127,7 @@ public class DiagramScreen extends Screen {
                     snappedY += 20;
                 }
 
-                // CORREZIONE: Passaggio esplicito di targetW e targetH al costruttore
+                // Add node with explicit width and height parameters
                 this.canvas.addNode(new DiagramNode(
                         UUID.randomUUID(),
                         itemId,
@@ -135,16 +135,16 @@ public class DiagramScreen extends Screen {
                         snappedY,
                         "",
                         1,
-                        0xFFFFFF, // Colore di default per gli oggetti
+                        0xFFFFFF, // default color for nodes
                         targetW,
                         targetH
                 ));
             }
-            this.palette.setDraggingItem(null); // Resettiamo la selezione
+            this.palette.setDraggingItem(null); // reset dragging selection
             return true;
         }
 
-        // 2. Rilascio di un NODO ESISTENTE sopra il menu
+        // 2. Releasing an existing node over the palette cancels the drag
         if (button == 0 && this.palette.isMouseOverPanel(mouseX, mouseY)) {
             this.canvas.cancelDrag();
         }
@@ -165,7 +165,7 @@ public class DiagramScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (this.palette.keyPressed(keyCode, scanCode, modifiers)) return true;
-        // INOLTRO AL CANVAS (Per il tasto INVIO e cancellazione)
+        // Forward to canvas (enter/delete handling)
         if (this.canvas.keyPressed(keyCode, scanCode, modifiers)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
@@ -173,7 +173,7 @@ public class DiagramScreen extends Screen {
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
         if (this.palette.charTyped(codePoint, modifiers)) return true;
-        // INOLTRO AL CANVAS (Per digitare i numeri)
+        // Forward typed chars to canvas (numeric fields)
         if (this.canvas.charTyped(codePoint, modifiers)) return true;
         return super.charTyped(codePoint, modifiers);
     }
@@ -187,9 +187,9 @@ public class DiagramScreen extends Screen {
 
         List<DiagramNode> currentNodes = this.canvas.getNodes();
         List<DiagramEdge> currentEdges = this.canvas.getConnectionManager().getEdges();
-        List<CanvasPanel.DiagramStroke> currentStrokes = this.canvas.getStrokes(); // --- NUOVO ---
+        List<CanvasPanel.DiagramStroke> currentStrokes = this.canvas.getStrokes();
 
-        // Il costruttore ora accetta anche la lista dei tratti
+        // The constructor now includes strokes as part of the saved data
         DiagramData newData = new DiagramData(currentNodes, currentEdges, currentStrokes);
 
         DiagramNetworking.sendSavePacket(newData);

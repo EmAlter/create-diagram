@@ -14,19 +14,19 @@ public class RecipeAnalyzer {
     private final RecipeManager recipeManager;
 
     public RecipeAnalyzer() {
-        // Recuperiamo il manager delle ricette dal mondo lato client
+        // Obtain the client's recipe manager if available
         ClientLevel level = Minecraft.getInstance().level;
         this.recipeManager = (level != null) ? level.getRecipeManager() : null;
     }
 
-    // Esempio di metodo per testare se riusciamo a leggere le ricette base
+    // Example helper method to print the number of smelting recipes available
     public void printSmeltingRecipes() {
         if (recipeManager == null) return;
 
         List<RecipeHolder<?>> smeltingRecipes = new ArrayList<>(recipeManager.getAllRecipesFor(RecipeType.SMELTING));
-        System.out.println("Trovate " + smeltingRecipes.size() + " ricette di fornace!");
+        System.out.println("Found " + smeltingRecipes.size() + " smelting recipes");
     }
 
-    // Nelle prossime fasi useremo questo manager per estrarre:
-    // AllRecipeTypes.SPLASHING, AllRecipeTypes.PRESSING, AllRecipeTypes.MIXING (che sono i tipi specifici di Create)
+    // In later stages we will use this manager to extract Create-specific recipe types such as
+    // splashing, pressing and mixing
 }

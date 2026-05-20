@@ -16,20 +16,20 @@ public record DiagramData(
         List<DiagramEdge> edges,
         List<CanvasPanel.DiagramStroke> strokes
 ) {
-    // 1. Codec di utilità per il singolo punto [x, y] rappresentato come array di int
+    // Utility codec for a single point [x, y] represented as an int array
     private static final Codec<int[]> POINT_CODEC = Codec.INT.listOf().xmap(
             list -> new int[]{list.get(0), list.get(1)},
             array -> List.of(array[0], array[1])
     );
 
-    // 2. Codec per ricostruire e salvare la struttura del DiagramStroke
+    // Codec to (de)serialize a DiagramStroke structure
     private static final Codec<CanvasPanel.DiagramStroke> STROKE_CODEC = RecordCodecBuilder.create(instance -> instance.group(
             UUIDUtil.CODEC.fieldOf("id").forGetter(stroke -> stroke.id() != null ? stroke.id() : UUID.randomUUID()),
             Codec.INT.fieldOf("color").forGetter(CanvasPanel.DiagramStroke::color),
             POINT_CODEC.listOf().fieldOf("points").forGetter(CanvasPanel.DiagramStroke::points)
     ).apply(instance, CanvasPanel.DiagramStroke::new));
 
-    // 3. Il Codec principale letto dal Data Component e agganciato al sistema di Networking
+    // Main codec used by the data component and the networking system
     public static final Codec<DiagramData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             DiagramNode.CODEC.listOf().fieldOf("nodes").forGetter(DiagramData::nodes),
             DiagramEdge.CODEC.listOf().fieldOf("edges").forGetter(DiagramData::edges),

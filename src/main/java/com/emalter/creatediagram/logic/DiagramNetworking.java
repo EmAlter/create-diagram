@@ -14,7 +14,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public class DiagramNetworking {
 
-    // 1. Definiamo il Record del Pacchetto
+    // 1. Define the packet payload record
     public record SaveDiagramPayload(DiagramData data) implements CustomPacketPayload {
         public static final Type<SaveDiagramPayload> ID = new Type<>(ResourceLocation.parse("creatediagram:save_diagram"));
         
@@ -29,8 +29,8 @@ public class DiagramNetworking {
         }
     }
 
-    // 2. Metodo per registrare il payload all'avvio della Mod
-    // DEVI REGISTRARE QUESTO EVENTO NEL TUO MOD EVENT BUS!
+    // 2. Register the payload handlers during mod initialization.
+    // Ensure this method is called from your mod event bus during setup.
     public static void register(RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar("creatediagram");
 
@@ -38,14 +38,14 @@ public class DiagramNetworking {
                 SaveDiagramPayload.ID,
                 SaveDiagramPayload.CODEC,
                 (payload, context) -> {
-                    // Viene eseguito sul Server Thread
+                    // This runs on the server thread
                     context.enqueueWork(() -> {
-                        // Prende l'oggetto dalla mano principale del giocatore
+                        // Read the player's main-hand item
                         ItemStack mainHandItem = context.player().getMainHandItem();
 
-                        // Opzionale ma consigliato: verifica l'oggetto
+                        // Optional safety check: ensure the item exists
                         if (!mainHandItem.isEmpty()) {
-                            // Scrive il nuovo Data Component!
+                            // Write the DiagramData component into the held item
                             mainHandItem.set(ModDataComponents.DIAGRAM_DATA, payload.data());
                         }
                     });
@@ -53,7 +53,7 @@ public class DiagramNetworking {
         );
     }
 
-    // 3. Metodo invocato dal Client per inviare i dati al Server
+    // 3. Client helper to send diagram data to the server
     public static void sendSavePacket(DiagramData data) {
         PacketDistributor.sendToServer(new SaveDiagramPayload(data));
     }

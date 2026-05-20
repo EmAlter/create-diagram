@@ -8,15 +8,22 @@ import net.minecraft.network.codec.StreamCodec;
 
 import java.util.UUID;
 
-// AGGIUNTI: width e height
+/**
+ * Represents a node in the diagram with positional, visual and semantic properties.
+ * The record contains fields for id, item type, position, property metadata, amount, color and sizing.
+ */
 public record DiagramNode(UUID id, String itemType, int x, int y, String property, int amount, int color, int width, int height) {
 
-    // Costruttore secondario per retrocompatibilità con i salvataggi più vecchi (senza amount e color)
+    /**
+     * Compatibility constructor for older saves that did not include amount and color.
+     */
     public DiagramNode(UUID id, String itemType, int x, int y, String property) {
         this(id, itemType, x, y, property, 1, 0xFFFFFF, getDefaultWidth(itemType), getDefaultHeight(itemType));
     }
 
-    // Costruttore secondario per retrocompatibilità con i salvataggi dello step precedente (senza width e height)
+    /**
+     * Compatibility constructor for older saves that did not include width and height.
+     */
     public DiagramNode(UUID id, String itemType, int x, int y, String property, int amount, int color) {
         this(id, itemType, x, y, property, amount, color, getDefaultWidth(itemType), getDefaultHeight(itemType));
     }
@@ -30,7 +37,7 @@ public record DiagramNode(UUID id, String itemType, int x, int y, String propert
         return type.contains("mechanical_mixer") ? 60 : 40;
     }
 
-    // Serializzazione su disco (NBT/JSON)
+    // Codec used for disk serialization (NBT/JSON)
     public static final Codec<DiagramNode> CODEC = RecordCodecBuilder.create(instance ->
             instance.group(
                     UUIDUtil.CODEC.fieldOf("id").forGetter(DiagramNode::id),
@@ -40,7 +47,7 @@ public record DiagramNode(UUID id, String itemType, int x, int y, String propert
                     Codec.STRING.fieldOf("property").forGetter(DiagramNode::property),
                     Codec.INT.optionalFieldOf("amount", 1).forGetter(DiagramNode::amount),
                     Codec.INT.optionalFieldOf("color", 0xFFFFFF).forGetter(DiagramNode::color),
-                    // Se non ci sono nel file, usa 0 (il decoder poi imposterà i default)
+                    // If absent in the file use 0 (decoder will substitute defaults)
                     Codec.INT.optionalFieldOf("width", 0).forGetter(DiagramNode::width),
                     Codec.INT.optionalFieldOf("height", 0).forGetter(DiagramNode::height)
             ).apply(instance, (id, itemType, x, y, property, amount, color, w, h) -> {
@@ -50,7 +57,7 @@ public record DiagramNode(UUID id, String itemType, int x, int y, String propert
             })
     );
 
-    // Serializzazione in rete manuale per superare il limite di 6 parametri di composite()
+    // Manual network serialization to avoid composite() parameter limit
     public static final StreamCodec<RegistryFriendlyByteBuf, DiagramNode> STREAM_CODEC = StreamCodec.of(
             (buf, node) -> {
                 buf.writeUUID(node.id());
@@ -60,8 +67,8 @@ public record DiagramNode(UUID id, String itemType, int x, int y, String propert
                 buf.writeUtf(node.property());
                 buf.writeInt(node.amount());
                 buf.writeInt(node.color());
-                buf.writeInt(node.width());   // NUOVO
-                buf.writeInt(node.height());  // NUOVO
+                        buf.writeInt(node.width());
+                        buf.writeInt(node.height());
             },
             buf -> {
                 return new DiagramNode(
@@ -72,8 +79,8 @@ public record DiagramNode(UUID id, String itemType, int x, int y, String propert
                         buf.readUtf(),
                         buf.readInt(),
                         buf.readInt(),
-                        buf.readInt(),  // NUOVO
-                        buf.readInt()   // NUOVO
+                        buf.readInt(),
+                        buf.readInt()
                 );
             }
     );

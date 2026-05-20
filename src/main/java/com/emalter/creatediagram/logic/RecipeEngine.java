@@ -14,8 +14,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Engine responsible for selecting and scoring EMI recipes based on provided inputs and machine categories.
+ * It exposes methods to compute possible outputs, select alternative targets, and evaluate catalysts and batches.
+ */
 public class RecipeEngine {
 
+    /**
+     * Returns the list of recipe outputs for the best matching recipe given a machine ID, node property and available inputs.
+     * @param machineId identifier of the machine/workstation
+     * @param property  node-specific property string used to influence recipe selection (e.g. catalysts or target output)
+     * @param inputs    map of available input item IDs to their quantities
+     * @return list of RecipeOutput objects representing resulting item ids, chances and amounts
+     */
     public List<RecipeOutput> getOutputs(String machineId, String property, Map<String, Integer> inputs) {
         if (inputs.isEmpty()) return List.of();
 
@@ -56,6 +67,10 @@ public class RecipeEngine {
         return results;
     }
 
+    /**
+     * Computes a simple score for a recipe by summing the required amounts of non-empty ingredients.
+     * Higher score means a heavier/rarer recipe and is used for sorting.
+     */
     private int calculateRecipeScore(List<EmiIngredient> inputs) {
         int score = 0;
         for (EmiIngredient req : inputs) {
@@ -64,6 +79,10 @@ public class RecipeEngine {
         return score;
     }
 
+    /**
+     * Cycles to the next available target output for the given machine/property and inputs.
+     * Returns an updated property string containing the new target id or null if no alternative exists.
+     */
     public String getNextAlternativeTarget(String machineId, String property, Map<String, Integer> inputs) {
         List<EmiRecipeCategory> validCategories = getCategoriesForMachine(machineId);
         List<EmiRecipe> validRecipes = new ArrayList<>();
@@ -111,6 +130,10 @@ public class RecipeEngine {
         return false;
     }
 
+    /**
+     * Checks whether the recipe produces an output with the specified item id.
+     */
+
     private String getTargetFromProperty(String property) {
         if (property != null && property.contains("target:")) {
             for (String part : property.split(";")) {
@@ -119,6 +142,10 @@ public class RecipeEngine {
         }
         return null;
     }
+
+    /**
+     * Extracts a 'target:' value from a semicolon-delimited property string if present.
+     */
 
     private List<EmiRecipeCategory> getCategoriesForMachine(String machineId) {
         List<EmiRecipeCategory> cats = new ArrayList<>();
@@ -135,6 +162,17 @@ public class RecipeEngine {
         return cats;
     }
 
+    /**
+     * Finds recipe categories associated with the provided machine/workstation id.
+     */
+
+    /**
+     * Checks whether the provided recipe is compatible with the catalyst/property encoded in the nodeProperty string.
+     * Supports special cases for washing/blasting/smoking/haunting categories and recipes that require heat levels.
+     * @param recipe the EMI recipe to validate
+     * @param nodeProperty semicolon-delimited property string that may contain a catalyst or a 'target:' entry
+     * @return true if the recipe can run with the given catalyst/property
+     */
     private boolean matchesCatalysts(EmiRecipe recipe, String nodeProperty) {
         String catalyst = "";
         if (nodeProperty != null) {
@@ -230,20 +268,28 @@ public class RecipeEngine {
         return false;
     }
 
+    /**
+     * Calculates how many full batches of the recipe can be performed with the provided user inputs.
+     * The method requires that every unique input type present in userInputs is consumed by the recipe. If some
+     * user input types are not used by the recipe the recipe is considered partial and returns 0 batches.
+     * @param recipeInputs list of recipe ingredient requirements
+     * @param userInputs map of available item ids to quantities
+     * @return number of full batches that can be executed (0 if not possible)
+     */
     private int calculateBatches(List<EmiIngredient> recipeInputs, Map<String, Integer> userInputs) {
-        // Se la ricetta non richiede input (raro), passiamo
+        // If recipe requires no inputs, it only matches when the user provided no inputs.
         if (recipeInputs.isEmpty()) {
             return userInputs.isEmpty() ? 1 : 0;
         }
 
         Map<String, Long> aggregatedRequirements = new HashMap<>();
-        Set<String> usedUserInputs = new HashSet<>(); // Memoria degli input consumati
+        Set<String> usedUserInputs = new HashSet<>(); // track which user input types were consumed
 
         for (EmiIngredient req : recipeInputs) {
             if (req.isEmpty()) continue;
 
             String matchedId = null;
-            // Match esatto: sicuro e blindato
+            // Exact match: look for a user-provided id that matches any valid stack for the ingredient
             for (EmiStack validStack : req.getEmiStacks()) {
                 String validId = validStack.getId().toString();
                 if (userInputs.containsKey(validId)) {
@@ -252,15 +298,13 @@ public class RecipeEngine {
                 }
             }
 
-            if (matchedId == null) return 0; // Ingrediente mancante
+            if (matchedId == null) return 0; // missing required ingredient
 
-            usedUserInputs.add(matchedId); // Segniamo che abbiamo usato questo tipo di input
+            usedUserInputs.add(matchedId); // mark that this input type was used
             aggregatedRequirements.put(matchedId, aggregatedRequirements.getOrDefault(matchedId, 0L) + req.getAmount());
         }
 
-        // --- LA MAGIA DELL'AND ---
-        // Se la ricetta non ha utilizzato TUTTI i tipi di oggetti unici passati dai cavi, 
-        // significa che è una ricetta parziale e deve essere scartata.
+        // If the recipe did not consume all unique user input types, treat it as a partial recipe and fail.
         if (usedUserInputs.size() < userInputs.size()) {
             return 0;
         }

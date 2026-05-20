@@ -7,14 +7,20 @@ import java.util.UUID;
 public class TextCommentEditor {
     private UUID editingNodeId = null;
     private String currentText = "";
-
-    // Avvia l'editing su un nodo specifico
+    /**
+     * Manages in-place text editing for a node. Stores the node id currently being edited and the working text.
+     */
+    /**
+     * Begin editing a node with an optional initial text.
+     */
     public void startEditing(UUID nodeId, String initialText) {
         this.editingNodeId = nodeId;
         this.currentText = initialText != null ? initialText : "";
     }
 
-    // Ferma l'editing
+    /**
+     * Stop the current editing session.
+     */
     public void stopEditing() {
         this.editingNodeId = null;
     }
@@ -35,37 +41,43 @@ public class TextCommentEditor {
         return editingNodeId;
     }
 
-    // Restituisce la stringa da disegnare, includendo il cursore lampeggiante
+    /**
+     * Returns the string to display, including a blinking cursor while editing.
+     */
     public String getDisplayText() {
         if (editingNodeId == null) return "";
         return ((System.currentTimeMillis() / 500) % 2 == 0) ? currentText + "_" : currentText;
     }
 
-    // Gestione dei tasti di controllo (Ritorna true se il tasto è stato consumato)
+    /**
+     * Handles control key presses while editing. Returns true if the key was consumed.
+     */
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (editingNodeId == null) return false;
 
-        if (keyCode == 256) { // Tasto ESCAPE
+        if (keyCode == 256) { // ESCAPE
             stopEditing();
             return true;
         }
-        if (keyCode == 259 && !currentText.isEmpty()) { // Tasto BACKSPACE
+        if (keyCode == 259 && !currentText.isEmpty()) { // BACKSPACE
             currentText = currentText.substring(0, currentText.length() - 1);
             return true;
         }
-        if (keyCode == 257) { // Tasto ENTER
+        if (keyCode == 257) { // ENTER
             currentText += "\n";
             return true;
         }
-        // Consuma tasti freccia e altri comandi per non far muovere il giocatore in background
+        // Consume arrow keys and other commands to prevent player movement while typing
         return true;
     }
 
-    // Gestione della digitazione delle lettere
+    /**
+     * Handles typed characters and appends printable characters to the current text.
+     */
     public boolean charTyped(char codePoint, int modifiers) {
         if (editingNodeId != null) {
-            // Accetta solo caratteri stampabili validi
-            if (codePoint >= 32 && codePoint != 127) { // Spazio e sopra, escludendo DEL
+            // Accept only printable characters (space and above, excluding DEL)
+            if (codePoint >= 32 && codePoint != 127) {
                 currentText += codePoint;
             }
             return true;

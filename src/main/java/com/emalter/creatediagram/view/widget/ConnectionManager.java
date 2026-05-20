@@ -11,6 +11,11 @@ import net.minecraft.network.chat.Component;
 
 import java.util.*;
 
+/**
+ * Manages diagram connections (edges) between nodes and provides rendering and interaction helpers.
+ * Responsible for computing dynamic outputs for machines, balancing edges, and handling UI interactions
+ * such as dragging connections and a quantity slider.
+ */
 public class ConnectionManager {
     private List<DiagramEdge> edges = new ArrayList<>();
     private final RecipeEngine recipeEngine = new RecipeEngine();
@@ -21,7 +26,7 @@ public class ConnectionManager {
     private int mouseWorldX = 0;
     private int mouseWorldY = 0;
 
-    // --- VARIABILI PER LO SLIDER STILE CREATE ---
+    // Slider state (visual quantity slider shown when interacting with an edge)
     private DiagramEdge edgeWithOpenSlider = null;
     private int sliderX = 0;
     private int sliderY = 0;
@@ -95,7 +100,7 @@ public class ConnectionManager {
                         break;
                     }
                 }
-                // Chiude lo slider se il cavo che stiamo guardando viene eliminato
+                // Close the slider if the edge being inspected was removed
                 if (!isValid && edge.equals(edgeWithOpenSlider)) edgeWithOpenSlider = null;
                 return !isValid;
             }
@@ -163,30 +168,30 @@ public class ConnectionManager {
             }
         }
 
-        // --- RENDERING DELLO SLIDER STILE CREATE ---
+        // Slider rendering (quantity selector) if open
         if (edgeWithOpenSlider != null) {
             guiGraphics.pose().pushPose();
             guiGraphics.pose().translate(0, 0, 300);
 
-            // Sfondo pannello
+            // Panel background
             guiGraphics.fill(sliderX - 10, sliderY - 15, sliderX + sliderWidth + 10, sliderY + sliderHeight + 10, 0xEE222222);
             guiGraphics.renderOutline(sliderX - 10, sliderY - 15, sliderWidth + 20, sliderHeight + 25, 0xFFFFAA00);
 
-            // Testo dinamico
-            String label = "Quantità: " + sliderValue;
+            // Dynamic text showing current quantity
+            String label = "Quantity: " + sliderValue;
             int textW = font.width(label);
             guiGraphics.drawString(font, label, sliderX + (sliderWidth - textW) / 2, sliderY - 11, 0xFFFFFFFF, false);
 
-            // Binario dello slider (Sfondo scuro)
+            // Slider track (dark background)
             guiGraphics.fill(sliderX, sliderY, sliderX + sliderWidth, sliderY + sliderHeight, 0xFF111111);
             guiGraphics.renderOutline(sliderX, sliderY, sliderWidth, sliderHeight, 0xFF555555);
 
-            // Riempimento dorato (Create Style)
+            // Golden fill (styled)
             float fillRatio = sliderMax > sliderMin ? (float)(sliderValue - sliderMin) / (sliderMax - sliderMin) : 0;
             int fillW = (int)(fillRatio * sliderWidth);
             guiGraphics.fill(sliderX + 1, sliderY + 1, sliderX + fillW, sliderY + sliderHeight - 1, 0xFFFFAA00);
 
-            // Maniglia Bianca (Thumb)
+            // White thumb
             int thumbX = sliderX + fillW;
             guiGraphics.fill(thumbX - 2, sliderY - 2, thumbX + 2, sliderY + sliderHeight + 2, 0xFFEEEEEE);
             guiGraphics.renderOutline(thumbX - 2, sliderY - 2, 4, sliderHeight + 4, 0xFF333333);
@@ -373,7 +378,7 @@ public class ConnectionManager {
     }
 
     public boolean mouseDragged(double worldX, double worldY, int button) {
-        // Se stiamo trascinando lo slider, aggiorna in tempo reale
+        // If the slider is being dragged, update its value in real time
         if (isDraggingSlider && edgeWithOpenSlider != null) {
             updateSliderValue(worldX);
             return true;
@@ -387,8 +392,8 @@ public class ConnectionManager {
                 isDraggingSlider = true;
                 updateSliderValue(worldX);
                 return true;
-            } else {
-                // Click fuori: chiudiamo il popup e proseguiamo
+                } else {
+                // Click outside: close the popup
                 edgeWithOpenSlider = null;
                 isDraggingSlider = false;
                 return true;

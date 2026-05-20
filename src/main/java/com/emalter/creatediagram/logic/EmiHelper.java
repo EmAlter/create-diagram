@@ -17,8 +17,7 @@ public class EmiHelper {
     public static void initCache() {
         if (isInitialized) return;
 
-        // FASE DI SICUREZZA: Se EMI non ha ancora caricato le ricette, interrompiamo
-        // per evitare di bloccare la cache su una lista vuota!
+        // Safety: if EMI hasn't loaded recipes yet, abort to avoid caching an empty list
         if (EmiApi.getRecipeManager().getRecipes().isEmpty()) {
             return;
         }
@@ -38,7 +37,7 @@ public class EmiHelper {
             }
         }
 
-        // Scansioniamo TUTTO: Input, Output e Catalizzatori
+        // Scan all recipes: inputs, outputs and catalysts
         for (EmiRecipe recipe : EmiApi.getRecipeManager().getRecipes()) {
             for (EmiIngredient req : recipe.getInputs()) {
                 for (EmiStack stack : req.getEmiStacks()) VALID_INPUTS.add(stack.getId().toString());
@@ -69,8 +68,7 @@ public class EmiHelper {
     public static boolean isValidInput(String id) {
         if (!isInitialized) initCache();
 
-        // FAILSAFE ESTREMO: Se la cache è misteriosamente vuota,
-        // non nascondiamo il menu, mostriamo tutto!
+        // Extreme failsafe: if the cache is unexpectedly empty, expose everything instead of hiding the menu
         if (VALID_INPUTS.isEmpty() && VALID_MACHINES.isEmpty()) {
             return true;
         }

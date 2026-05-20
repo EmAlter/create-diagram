@@ -13,6 +13,10 @@ import net.minecraft.util.Mth;
 
 import java.util.*;
 
+/**
+ * CanvasPanel is the central UI component that manages nodes, drawing strokes, panning/zooming and
+ * delegates connection rendering and interaction to a ConnectionManager.
+ */
 public class CanvasPanel {
 
     private final DrawingToolbar toolbar = new DrawingToolbar();
@@ -104,6 +108,9 @@ public class CanvasPanel {
         return true;
     }
 
+    /**
+     * Main render method for the canvas. Draws background, grid, strokes, nodes and forwards tooltip rendering.
+     */
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, int screenWidth, int screenHeight, int paletteWidth) {
         guiGraphics.fill(0, 0, screenWidth, screenHeight, 0xFF111111);
         drawGrid(guiGraphics, screenWidth, screenHeight);
@@ -174,6 +181,9 @@ public class CanvasPanel {
         guiGraphics.pose().popPose();
     }
 
+    /**
+     * Draws the snapping grid based on the current zoom and offsets.
+     */
     private void drawGrid(GuiGraphics guiGraphics, int screenWidth, int screenHeight) {
         int color = 0x33333333;
         float scaledGridSize = gridSize * zoom;
@@ -186,6 +196,9 @@ public class CanvasPanel {
         for (float y = firstLineY; y < screenHeight; y += scaledGridSize) guiGraphics.fill(0, (int)y, screenWidth, (int)y + 1, color);
     }
 
+    /**
+     * Draws a freehand stroke by connecting consecutive points with thin lines.
+     */
     private void drawStroke(GuiGraphics guiGraphics, DiagramStroke stroke) {
         if (stroke.points().size() < 2) return;
         for (int i = 0; i < stroke.points().size() - 1; i++) {
@@ -195,6 +208,9 @@ public class CanvasPanel {
         }
     }
 
+    /**
+     * Draws a straight anti-aliased line between two points using a rotated rectangle technique.
+     */
     private void drawFastLine(GuiGraphics gui, int x1, int y1, int x2, int y2, int color) {
         float dx = x2 - x1;
         float dy = y2 - y1;
@@ -207,6 +223,10 @@ public class CanvasPanel {
         gui.pose().popPose();
     }
 
+    /**
+     * Renders a single diagram node: either a text comment or an item/machine node, including overlays like
+     * quantity, catalyst slot and resize handle.
+     */
     private void drawNode(GuiGraphics guiGraphics, DiagramNode node) {
         int w = node.width();
         int h = node.height();
@@ -336,6 +356,9 @@ public class CanvasPanel {
         guiGraphics.pose().popPose();
     }
 
+    /**
+     * Draws a small popup menu showing valid catalysts for the specified machine node.
+     */
     private void drawCatalystMenu(GuiGraphics guiGraphics, UUID nodeId) {
         DiagramNode node = findNode(nodeId);
         if (node == null) return;
@@ -353,6 +376,9 @@ public class CanvasPanel {
         }
     }
 
+    /**
+     * Draws a palette popup for selecting a color for a comment node.
+     */
     private void drawNodeColorMenu(GuiGraphics guiGraphics, UUID nodeId) {
         DiagramNode node = findNode(nodeId);
         if (node == null) return;
@@ -370,6 +396,9 @@ public class CanvasPanel {
         }
     }
 
+    /**
+     * Erases any stroke points within a radius of the given world coordinates.
+     */
     private void eraseAt(int wx, int wy) {
         strokes.removeIf(stroke -> {
             for (int[] p : stroke.points()) {
@@ -379,6 +408,10 @@ public class CanvasPanel {
         });
     }
 
+    /**
+     * Handles mouse click events on the canvas area. This method manages node selection, creation, opening
+     * of small menus, starting drawing operations and delegation to the toolbar and connection manager.
+     */
     public boolean mouseClicked(double mouseX, double mouseY, int button, int paletteWidth) {
         int screenWidth = net.minecraft.client.Minecraft.getInstance().getWindow().getGuiScaledWidth();
         int screenHeight = net.minecraft.client.Minecraft.getInstance().getWindow().getGuiScaledHeight();
@@ -485,7 +518,7 @@ public class CanvasPanel {
                     return true;
                 }
 
-                // --- QUANTITA' SOLO PER I NON-MACCHINARI ---
+                // Quantity input only for non-machine items
                 if (!isComment && !isMachine && worldX >= node.x() + w - 16 && worldX <= node.x() + w && worldY >= node.y() && worldY <= node.y() + 14) {
                     this.nodeWithActiveAmountField = node.id();
                     this.activeAmountField = new EditBox(this.font, node.x() + (w/2) - 15, node.y() - 16, 30, 14, Component.literal("Qty"));
@@ -512,13 +545,11 @@ public class CanvasPanel {
 
                     if (node.id().equals(lastClickedNodeId) && (currentTime - lastClickTime) < 300) {
 
-                        // --- NUOVA LOGICA DI POSIZIONAMENTO CLONE ---
-                        // Calcola l'angolo in basso a destra e aggiunge 20px di spazio (snap griglia)
+                                // Clone placement: compute bottom-right area offset by 20px (grid snap)
                         int cloneX = node.x() + node.width() + 20;
                         int cloneY = node.y() + node.height() + 20;
 
-                        // Verifica veloce: se per caso il punto calcolato è fuori dallo schermo / occupato, 
-                        // lo sposta leggermente finché non trova un posto valido
+                        // Quick check: if the initial clone position is invalid or occupied, move it until valid
                         while (!isPositionValid(cloneX, cloneY, node.width(), node.height(), null)) {
                             cloneX += 20;
                             cloneY += 20;
@@ -688,11 +719,11 @@ public class CanvasPanel {
             int snappedX = Math.round(this.draggedNode.x() / 20.0f) * 20;
             int snappedY = Math.round(this.draggedNode.y() / 20.0f) * 20;
 
-            // --- SNAP DRAG CORRETTO (Lettura width/height del momento) ---
+            // Snap drag: read current width/height before committing the snapped position
             int currentW = this.draggedNode.width();
             int currentH = this.draggedNode.height();
 
-            if (!isPositionValid(snappedX, snappedY, currentW, currentH, this.draggedNode.id())) {
+                    if (!isPositionValid(snappedX, snappedY, currentW, currentH, this.draggedNode.id())) {
                 snappedX = dragStartX;
                 snappedY = dragStartY;
             }
@@ -720,7 +751,7 @@ public class CanvasPanel {
                     newAmount = Integer.parseInt(activeAmountField.getValue().trim());
                     if (newAmount < 1) newAmount = 1;
 
-                    // --- LIMITE IBRIDO (Oggetti fisici max 64, Fluidi/Gas max 1.000.000) ---
+                            // Hybrid limit: physical items max 64, fluids/gases max 1,000,000
                     EmiStack stackInfo = EmiHelper.getStack(node.itemType());
                     int maxAllowed = stackInfo.getItemStack().isEmpty() ? 1000000 : 64;
                     if (newAmount > maxAllowed) newAmount = maxAllowed;
