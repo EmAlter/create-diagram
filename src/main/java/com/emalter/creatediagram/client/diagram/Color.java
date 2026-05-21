@@ -1,4 +1,4 @@
-package com.emalter.creatediagram.view.widget;
+package com.emalter.creatediagram.client.diagram;
 
 /**
  * Predefined palette colors used by the UI. Each value maps to a dye item id and a display hex color.

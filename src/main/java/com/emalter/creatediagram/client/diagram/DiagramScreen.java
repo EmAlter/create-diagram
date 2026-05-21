@@ -1,12 +1,13 @@
-package com.emalter.creatediagram.view;
+package com.emalter.creatediagram.client.diagram;
 
 import com.emalter.creatediagram.component.DiagramData;
 import com.emalter.creatediagram.component.DiagramEdge;
 import com.emalter.creatediagram.component.DiagramNode;
 import com.emalter.creatediagram.component.ModDataComponents;
 import com.emalter.creatediagram.logic.DiagramNetworking;
-import com.emalter.creatediagram.view.widget.CanvasPanel;
-import com.emalter.creatediagram.view.widget.PalettePanel;
+import com.emalter.creatediagram.client.diagram.canvas.CanvasController;
+import com.emalter.creatediagram.client.diagram.canvas.save.CanvasSaveFactory;
+import com.emalter.creatediagram.client.menu.MenuController;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -16,16 +17,32 @@ import net.minecraft.world.item.ItemStack;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * A GUI screen used to create, edit, and manage diagrams interactively.
+ * This screen allows users to work with diagram components such as nodes,
+ * edges, and freehand strokes. The screen provides a canvas for editing
+ * and a palette for adding new items.
+ *
+ * The data modified in this screen can be saved and is associated with an
+ * item stack, allowing persistent storage of diagram information.
+ *
+ * The screen includes the following interactive components:
+ * - A canvas for diagram editing.
+ * - A palette for selecting and dragging items into the canvas.
+ *
+ * It overrides input-related methods to ensure proper event handling
+ * for both the canvas and the palette.
+ */
 public class DiagramScreen extends Screen {
     private final ItemStack blueprintStack;
     private final InteractionHand hand;
 
     // UI components
-    private CanvasPanel canvas;
-    private PalettePanel palette;
+    private CanvasController canvas;
+    private MenuController palette;
 
     public DiagramScreen(ItemStack stack, InteractionHand hand) {
-        super(Component.literal("Editor Diagrammi Create"));
+        super(Component.literal("Create Diagram Editor"));
         this.blueprintStack = stack;
         this.hand = hand;
     }
@@ -34,8 +51,8 @@ public class DiagramScreen extends Screen {
     protected void init() {
         super.init();
 
-        this.canvas = new CanvasPanel(this.font);
-        this.palette = new PalettePanel(this.height, this.font);
+        this.canvas = new CanvasController(this.font);
+        this.palette = new MenuController(this.height, this.font);
         this.palette.init();
 
         DiagramData data = blueprintStack.get(ModDataComponents.DIAGRAM_DATA);
@@ -44,7 +61,7 @@ public class DiagramScreen extends Screen {
                 this.canvas.setNodes(data.nodes());
             }
             if (data.edges() != null && !data.edges().isEmpty()) {
-                this.canvas.getConnectionManager().setEdges(data.edges());
+                this.canvas.setEdges(data.edges());
             }
             // Load saved freehand strokes if present
             if (data.strokes() != null && !data.strokes().isEmpty()) {
@@ -78,6 +95,17 @@ public class DiagramScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        double commentMouseX = mouseX;
+        if (button == 1 && hasShiftDown() && this.palette.getIsOpen() && mouseX <= this.palette.getWidth() + 15) {
+            commentMouseX = this.palette.getWidth() + 20;
+        }
+
+        if (button == 1 && hasShiftDown()) {
+            this.canvas.addTextComment((int) this.canvas.getWorldX(commentMouseX), (int) this.canvas.getWorldY(mouseY));
+            this.palette.unfocusSearch();
+            return true;
+        }
+
         if (this.palette.isMouseOverPanel(mouseX, mouseY)) {
             return this.palette.mouseClicked(mouseX, mouseY, button);
         } else {
@@ -155,7 +183,7 @@ public class DiagramScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (mouseX < palette.getWidth()) {
+        if (palette.getIsOpen() && mouseX < palette.getWidth()) {
             return this.palette.mouseScrolled(mouseX, mouseY, scrollY);
         } else {
             return this.canvas.mouseScrolled(mouseX, mouseY, scrollY);
@@ -186,11 +214,8 @@ public class DiagramScreen extends Screen {
         super.removed();
 
         List<DiagramNode> currentNodes = this.canvas.getNodes();
-        List<DiagramEdge> currentEdges = this.canvas.getConnectionManager().getEdges();
-        List<CanvasPanel.DiagramStroke> currentStrokes = this.canvas.getStrokes();
-
-        // The constructor now includes strokes as part of the saved data
-        DiagramData newData = new DiagramData(currentNodes, currentEdges, currentStrokes);
+        List<DiagramEdge> currentEdges = this.canvas.getEdges();
+        DiagramData newData = CanvasSaveFactory.create(this.canvas);
 
         DiagramNetworking.sendSavePacket(newData);
     }

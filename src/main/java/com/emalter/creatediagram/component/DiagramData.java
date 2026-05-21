@@ -1,6 +1,6 @@
 package com.emalter.creatediagram.component;
 
-import com.emalter.creatediagram.view.widget.CanvasPanel;
+import com.emalter.creatediagram.client.diagram.canvas.CanvasModel;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.UUIDUtil;
@@ -14,7 +14,7 @@ import java.util.UUID;
 public record DiagramData(
         List<DiagramNode> nodes,
         List<DiagramEdge> edges,
-        List<CanvasPanel.DiagramStroke> strokes
+        List<CanvasModel.DiagramStroke> strokes
 ) {
     // Utility codec for a single point [x, y] represented as an int array
     private static final Codec<int[]> POINT_CODEC = Codec.INT.listOf().xmap(
@@ -23,11 +23,11 @@ public record DiagramData(
     );
 
     // Codec to (de)serialize a DiagramStroke structure
-    private static final Codec<CanvasPanel.DiagramStroke> STROKE_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+    private static final Codec<CanvasModel.DiagramStroke> STROKE_CODEC = RecordCodecBuilder.create(instance -> instance.group(
             UUIDUtil.CODEC.fieldOf("id").forGetter(stroke -> stroke.id() != null ? stroke.id() : UUID.randomUUID()),
-            Codec.INT.fieldOf("color").forGetter(CanvasPanel.DiagramStroke::color),
-            POINT_CODEC.listOf().fieldOf("points").forGetter(CanvasPanel.DiagramStroke::points)
-    ).apply(instance, CanvasPanel.DiagramStroke::new));
+            Codec.INT.fieldOf("color").forGetter(CanvasModel.DiagramStroke::color),
+            POINT_CODEC.listOf().fieldOf("points").forGetter(CanvasModel.DiagramStroke::points)
+    ).apply(instance, CanvasModel.DiagramStroke::new));
 
     // Main codec used by the data component and the networking system
     public static final Codec<DiagramData> CODEC = RecordCodecBuilder.create(instance -> instance.group(

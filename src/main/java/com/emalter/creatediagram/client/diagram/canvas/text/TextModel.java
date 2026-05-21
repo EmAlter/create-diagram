@@ -1,17 +1,24 @@
-package com.emalter.creatediagram.view.widget;
-
-import net.minecraft.SharedConstants;
+package com.emalter.creatediagram.client.diagram.canvas.text;
 
 import java.util.UUID;
 
-public class TextCommentEditor {
+/**
+ * Model for text node management in the canvas. Manages all state related to text nodes,
+ * editing state, color selection and display.
+ */
+public class TextModel {
     private UUID editingNodeId = null;
     private String currentText = "";
+    
+    private UUID nodeWithOpenColorMenu = null;
+    private int colorMenuX = 0;
+    private int colorMenuY = 0;
+
+    // Cursor blinking animation state
+    private long lastBlinkTime = System.currentTimeMillis();
+
     /**
-     * Manages in-place text editing for a node. Stores the node id currently being edited and the working text.
-     */
-    /**
-     * Begin editing a node with an optional initial text.
+     * Begin editing a text node with optional initial text.
      */
     public void startEditing(UUID nodeId, String initialText) {
         this.editingNodeId = nodeId;
@@ -19,7 +26,7 @@ public class TextCommentEditor {
     }
 
     /**
-     * Stop the current editing session.
+     * Stop the current editing session and prepare to save the text.
      */
     public void stopEditing() {
         this.editingNodeId = null;
@@ -84,4 +91,37 @@ public class TextCommentEditor {
         }
         return false;
     }
+
+    // Color menu management
+    public UUID getNodeWithOpenColorMenu() {
+        return nodeWithOpenColorMenu;
+    }
+
+    public void openColorMenu(UUID nodeId, int x, int y) {
+        this.nodeWithOpenColorMenu = nodeId;
+        this.colorMenuX = x;
+        this.colorMenuY = y;
+    }
+
+    public void closeColorMenu() {
+        this.nodeWithOpenColorMenu = null;
+    }
+
+    public int getColorMenuX() {
+        return colorMenuX;
+    }
+
+    public int getColorMenuY() {
+        return colorMenuY;
+    }
+
+    public boolean isColorMenuOpen() {
+        return nodeWithOpenColorMenu != null;
+    }
+
+    public void setColorMenuPosition(int x, int y) {
+        this.colorMenuX = x;
+        this.colorMenuY = y;
+    }
 }
+

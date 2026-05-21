@@ -1,5 +1,6 @@
-package com.emalter.creatediagram.view;
+package com.emalter.creatediagram.client;
 
+import com.emalter.creatediagram.client.diagram.DiagramScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;

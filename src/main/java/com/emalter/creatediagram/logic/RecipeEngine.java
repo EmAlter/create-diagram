@@ -1,6 +1,6 @@
 package com.emalter.creatediagram.logic;
 
-import com.emalter.creatediagram.view.widget.ConnectionManager.RecipeOutput;
+import com.emalter.creatediagram.component.RecipeOutput;
 import dev.emi.emi.api.EmiApi;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import dev.emi.emi.api.recipe.EmiRecipeCategory;
@@ -45,7 +45,7 @@ public class RecipeEngine {
 
         validRecipes.sort((r1, r2) -> Integer.compare(calculateRecipeScore(r2.getInputs()), calculateRecipeScore(r1.getInputs())));
 
-        EmiRecipe selectedRecipe = validRecipes.get(0);
+        EmiRecipe selectedRecipe = validRecipes.getFirst();
         String targetId = getTargetFromProperty(property);
 
         if (targetId != null) {
@@ -74,7 +74,7 @@ public class RecipeEngine {
     private int calculateRecipeScore(List<EmiIngredient> inputs) {
         int score = 0;
         for (EmiIngredient req : inputs) {
-            if (!req.isEmpty()) score += req.getAmount();
+            if (!req.isEmpty()) score += (int) req.getAmount();
         }
         return score;
     }
@@ -112,7 +112,7 @@ public class RecipeEngine {
 
         int nextIndex = (currentIndex + 1) % validRecipes.size();
         EmiRecipe nextRecipe = validRecipes.get(nextIndex);
-        String nextTargetId = nextRecipe.getOutputs().isEmpty() ? "" : nextRecipe.getOutputs().get(0).getId().toString();
+        String nextTargetId = nextRecipe.getOutputs().isEmpty() ? "" : nextRecipe.getOutputs().getFirst().getId().toString();
 
         StringBuilder baseProperty = new StringBuilder();
         if (property != null) {
@@ -120,7 +120,7 @@ public class RecipeEngine {
                 if (!part.startsWith("target:") && !part.isEmpty()) baseProperty.append(part).append(";");
             }
         }
-        return baseProperty.toString() + "target:" + nextTargetId;
+        return baseProperty.append("target:").append(nextTargetId).toString();
     }
 
     private boolean hasOutput(EmiRecipe recipe, String itemId) {
@@ -129,10 +129,6 @@ public class RecipeEngine {
         }
         return false;
     }
-
-    /**
-     * Checks whether the recipe produces an output with the specified item id.
-     */
 
     private String getTargetFromProperty(String property) {
         if (property != null && property.contains("target:")) {
@@ -163,10 +159,6 @@ public class RecipeEngine {
     }
 
     /**
-     * Finds recipe categories associated with the provided machine/workstation id.
-     */
-
-    /**
      * Checks whether the provided recipe is compatible with the catalyst/property encoded in the nodeProperty string.
      * Supports special cases for washing/blasting/smoking/haunting categories and recipes that require heat levels.
      * @param recipe the EMI recipe to validate
@@ -192,72 +184,8 @@ public class RecipeEngine {
         if (safeProp.equals("create:blaze_burner")) userHeat = 1;
         else if (safeProp.equals("create:blaze_cake")) userHeat = 2;
 
-        int recipeHeat = 0;
-        boolean hasHeatRequirement = false;
-        Object rawRecipe = null;
-
-        try {
-            for (java.lang.reflect.Field f : recipe.getClass().getDeclaredFields()) {
-                f.setAccessible(true);
-                Object val = f.get(recipe);
-                if (val != null) {
-                    String className = val.getClass().getName().toLowerCase();
-                    if (className.contains("recipe") && !className.contains("emi")) {
-                        rawRecipe = val;
-                        break;
-                    }
-                }
-            }
-            if (rawRecipe == null) {
-                for (java.lang.reflect.Method m : recipe.getClass().getMethods()) {
-                    if (m.getParameterCount() == 0 && m.getReturnType().getName().toLowerCase().contains("recipe") && !m.getReturnType().getName().toLowerCase().contains("emi")) {
-                        m.setAccessible(true);
-                        rawRecipe = m.invoke(recipe);
-                        break;
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
-
-        if (rawRecipe == null && recipe.getId() != null) {
-            try {
-                var level = net.minecraft.client.Minecraft.getInstance().level;
-                if (level != null) {
-                    var recipeOpt = level.getRecipeManager().byKey(recipe.getId());
-                    if (recipeOpt.isPresent()) rawRecipe = recipeOpt.get();
-                }
-            } catch (Exception ignored) {}
-        }
-
-        if (rawRecipe != null) {
-            try {
-                if (rawRecipe.getClass().getName().contains("RecipeHolder")) {
-                    try {
-                        rawRecipe = rawRecipe.getClass().getMethod("value").invoke(rawRecipe);
-                    } catch (Exception e) {
-                        java.lang.reflect.Field vField = rawRecipe.getClass().getDeclaredField("value");
-                        vField.setAccessible(true);
-                        rawRecipe = vField.get(rawRecipe);
-                    }
-                }
-                for (java.lang.reflect.Method m : rawRecipe.getClass().getMethods()) {
-                    if (m.getParameterCount() == 0 && m.getReturnType().isEnum()) {
-                        Object res = m.invoke(rawRecipe);
-                        if (res != null) {
-                            String name = res.toString();
-                            if (name.equals("NONE") || name.equals("HEATED") || name.equals("SUPERHEATED")) {
-                                hasHeatRequirement = true;
-                                if (name.equals("HEATED")) recipeHeat = 1;
-                                else if (name.equals("SUPERHEATED")) recipeHeat = 2;
-                                break;
-                            }
-                        }
-                    }
-                }
-            } catch (Exception ignored) {}
-        }
-
-        if (hasHeatRequirement) return userHeat >= recipeHeat;
+        EmiHelper.HeatLevel recipeHeat = EmiHelper.getRecipeHeatLevel(recipe);
+        if (recipeHeat != EmiHelper.HeatLevel.NONE) return userHeat >= recipeHeat.ordinal();
         if (recipe.getCatalysts().isEmpty()) return true;
 
         for (EmiIngredient cat : recipe.getCatalysts()) {

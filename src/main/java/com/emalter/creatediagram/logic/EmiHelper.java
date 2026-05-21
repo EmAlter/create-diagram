@@ -12,7 +12,18 @@ public class EmiHelper {
     private static final Map<String, EmiStack> STACK_CACHE = new HashMap<>();
     private static final Set<String> VALID_MACHINES = new HashSet<>();
     private static final Set<String> VALID_INPUTS = new HashSet<>();
+    private static final Set<String> HIDDEN_MENU_ITEMS = Set.of("create:basin");
     private static boolean isInitialized = false;
+
+    public enum HeatLevel {
+        NONE,
+        HEATED,
+        SUPERHEATED;
+
+        public static HeatLevel max(HeatLevel first, HeatLevel second) {
+            return first.ordinal() >= second.ordinal() ? first : second;
+        }
+    }
 
     public static void initCache() {
         if (isInitialized) return;
@@ -68,6 +79,10 @@ public class EmiHelper {
     public static boolean isValidInput(String id) {
         if (!isInitialized) initCache();
 
+        if (HIDDEN_MENU_ITEMS.contains(id)) {
+            return false;
+        }
+
         // Extreme failsafe: if the cache is unexpectedly empty, expose everything instead of hiding the menu
         if (VALID_INPUTS.isEmpty() && VALID_MACHINES.isEmpty()) {
             return true;
@@ -79,36 +94,124 @@ public class EmiHelper {
     public static List<String> getValidCatalystsForMachine(String machineId) {
         if (!isInitialized) initCache();
         Set<String> catalysts = new LinkedHashSet<>();
+        HeatLevel highestHeat = HeatLevel.NONE;
 
         if (machineId.equals("create:encased_fan")) {
             catalysts.addAll(List.of("minecraft:water", "minecraft:lava", "minecraft:campfire", "minecraft:soul_campfire"));
-        } else if (machineId.equals("create:mechanical_mixer") || machineId.equals("create:basin")) {
-            catalysts.addAll(List.of("create:empty_blaze_burner", "create:blaze_burner", "create:blaze_cake"));
         }
 
-        for (EmiRecipeCategory category : EmiApi.getRecipeManager().getCategories()) {
-            boolean isMyWorkstation = false;
-            for (EmiIngredient workstation : EmiApi.getRecipeManager().getWorkstations(category)) {
-                for (EmiStack stack : workstation.getEmiStacks()) {
-                    if (stack.getId().toString().equals(machineId)) {
-                        isMyWorkstation = true;
-                        break;
-                    }
+        for (EmiRecipe recipe : getRecipesForMachine(machineId)) {
+            highestHeat = HeatLevel.max(highestHeat, getRecipeHeatLevel(recipe));
+
+            for (EmiIngredient cat : recipe.getCatalysts()) {
+                for (EmiStack stack : cat.getEmiStacks()) {
+                    String id = stack.getId().toString();
+                    if (!id.equals(machineId)) catalysts.add(id);
                 }
             }
+        }
 
-            if (isMyWorkstation) {
-                for (EmiRecipe recipe : EmiApi.getRecipeManager().getRecipes(category)) {
-                    for (EmiIngredient cat : recipe.getCatalysts()) {
-                        for (EmiStack stack : cat.getEmiStacks()) {
-                            String id = stack.getId().toString();
-                            if (!id.equals(machineId)) catalysts.add(id);
-                        }
-                    }
-                }
+        if (highestHeat != HeatLevel.NONE) {
+            catalysts.add("create:empty_blaze_burner");
+            catalysts.add("create:blaze_burner");
+            if (highestHeat == HeatLevel.SUPERHEATED) {
+                catalysts.add("create:blaze_cake");
             }
         }
 
         return new ArrayList<>(catalysts);
+    }
+
+    private static List<EmiRecipe> getRecipesForMachine(String machineId) {
+        Set<EmiRecipeCategory> categories = new LinkedHashSet<>();
+
+        for (EmiRecipeCategory category : EmiApi.getRecipeManager().getCategories()) {
+            for (EmiIngredient workstation : EmiApi.getRecipeManager().getWorkstations(category)) {
+                for (EmiStack stack : workstation.getEmiStacks()) {
+                    if (stack.getId().toString().equals(machineId)) {
+                        categories.add(category);
+                        break;
+                    }
+                }
+            }
+        }
+
+        List<EmiRecipe> recipes = new ArrayList<>();
+        for (EmiRecipeCategory category : categories) {
+            recipes.addAll(EmiApi.getRecipeManager().getRecipes(category));
+        }
+        return recipes;
+    }
+
+    public static HeatLevel getRecipeHeatLevel(EmiRecipe recipe) {
+        Object rawRecipe = extractRawRecipe(recipe);
+
+        if (rawRecipe == null) {
+            return HeatLevel.NONE;
+        }
+
+        try {
+            if (rawRecipe.getClass().getName().contains("RecipeHolder")) {
+                try {
+                    rawRecipe = rawRecipe.getClass().getMethod("value").invoke(rawRecipe);
+                } catch (Exception e) {
+                    java.lang.reflect.Field vField = rawRecipe.getClass().getDeclaredField("value");
+                    vField.setAccessible(true);
+                    rawRecipe = vField.get(rawRecipe);
+                }
+            }
+
+            for (java.lang.reflect.Method m : rawRecipe.getClass().getMethods()) {
+                if (m.getParameterCount() == 0 && m.getReturnType().isEnum()) {
+                    Object res = m.invoke(rawRecipe);
+                    if (res != null) {
+                        String name = res.toString();
+                        if (name.equals("HEATED")) return HeatLevel.HEATED;
+                        if (name.equals("SUPERHEATED")) return HeatLevel.SUPERHEATED;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        return HeatLevel.NONE;
+    }
+
+    private static Object extractRawRecipe(EmiRecipe recipe) {
+        Object rawRecipe = null;
+
+        try {
+            for (java.lang.reflect.Field f : recipe.getClass().getDeclaredFields()) {
+                f.setAccessible(true);
+                Object val = f.get(recipe);
+                if (val != null) {
+                    String className = val.getClass().getName().toLowerCase();
+                    if (className.contains("recipe") && !className.contains("emi")) {
+                        rawRecipe = val;
+                        break;
+                    }
+                }
+            }
+            if (rawRecipe == null) {
+                for (java.lang.reflect.Method m : recipe.getClass().getMethods()) {
+                    if (m.getParameterCount() == 0 && m.getReturnType().getName().toLowerCase().contains("recipe") && !m.getReturnType().getName().toLowerCase().contains("emi")) {
+                        m.setAccessible(true);
+                        rawRecipe = m.invoke(recipe);
+                        break;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        if (rawRecipe == null && recipe.getId() != null) {
+            try {
+                var level = net.minecraft.client.Minecraft.getInstance().level;
+                if (level != null) {
+                    var recipeOpt = level.getRecipeManager().byKey(recipe.getId());
+                    if (recipeOpt.isPresent()) rawRecipe = recipeOpt.get();
+                }
+            } catch (Exception ignored) {}
+        }
+
+        return rawRecipe;
     }
 }

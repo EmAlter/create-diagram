@@ -1,9 +1,10 @@
-package com.emalter.creatediagram.view.widget;
+package com.emalter.creatediagram.client.widget;
 
 import com.emalter.creatediagram.component.DiagramEdge;
 import com.emalter.creatediagram.component.DiagramNode;
 import com.emalter.creatediagram.logic.EmiHelper;
 import com.emalter.creatediagram.logic.RecipeEngine;
+import com.emalter.creatediagram.component.RecipeOutput;
 import dev.emi.emi.api.stack.EmiStack;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -15,7 +16,14 @@ import java.util.*;
  * Manages diagram connections (edges) between nodes and provides rendering and interaction helpers.
  * Responsible for computing dynamic outputs for machines, balancing edges, and handling UI interactions
  * such as dragging connections and a quantity slider.
+ *
+ * @deprecated This class has been replaced by the MVC architecture.
+ * Use {@link com.emalter.creatediagram.client.diagram.canvas.edge.EdgeController} instead,
+ * with {@link com.emalter.creatediagram.client.diagram.canvas.edge.EdgeModel} and
+ * {@link com.emalter.creatediagram.client.diagram.canvas.edge.EdgeView} for a clean separation of concerns.
+ * This class will be removed in a future version.
  */
+@Deprecated(since = "0.0.2", forRemoval = true)
 public class ConnectionManager {
     private List<DiagramEdge> edges = new ArrayList<>();
     private final RecipeEngine recipeEngine = new RecipeEngine();
@@ -37,7 +45,6 @@ public class ConnectionManager {
     private int sliderValue = 1;
     private boolean isDraggingSlider = false;
 
-    public record RecipeOutput(String itemId, float chance, int amount) {}
 
     public void addEdge(DiagramEdge edge) {
         if (!edges.contains(edge)) this.edges.add(edge);

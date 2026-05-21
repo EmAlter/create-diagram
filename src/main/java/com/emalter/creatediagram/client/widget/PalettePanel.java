@@ -1,4 +1,4 @@
-package com.emalter.creatediagram.view.widget;
+package com.emalter.creatediagram.client.widget;
 
 import com.emalter.creatediagram.logic.EmiHelper;
 import dev.emi.emi.api.EmiApi;
@@ -19,8 +19,15 @@ import java.util.*;
 
 /**
  * Side panel that shows available items and categories. Supports searching, dragging items into the canvas,
- * horizontal category scrolling and a scrollbar for the item list.
+ * horizontal categoryDiagramNetworking.sendSavePacket(...) scrolling and a scrollbar for the item list.
+ *
+ * @deprecated This class has been replaced by the MVC architecture.
+ * Use {@link com.emalter.creatediagram.client.menu.MenuController} instead,
+ * with {@link com.emalter.creatediagram.client.menu.MenuModel} and
+ * {@link com.emalter.creatediagram.client.menu.MenuView} for a clean separation of concerns.
+ * This class will be removed in a future version.
  */
+@Deprecated(since = "0.0.2", forRemoval = true)
 public class PalettePanel {
     private final int width = 180;
     private final int height;
@@ -69,9 +76,9 @@ public class PalettePanel {
             ResourceLocation id = emiStack.getId();
             String modid = id.getNamespace();
 
-            if (!EmiHelper.isValidInput(id.toString())) continue;
-
-            modRegistry.computeIfAbsent(modid, k -> new ArrayList<>()).add(emiStack);
+            if (EmiHelper.isValidInput(id.toString())) {
+                modRegistry.computeIfAbsent(modid, k -> new ArrayList<>()).add(emiStack);
+            }
         }
 
         availableMods.addAll(modRegistry.keySet());

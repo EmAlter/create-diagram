@@ -1,6 +1,8 @@
-package com.emalter.creatediagram.view.widget;
+package com.emalter.creatediagram.client.widget;
 
 import com.emalter.creatediagram.logic.EmiHelper;
+import com.emalter.creatediagram.client.diagram.Color;
+import com.emalter.creatediagram.client.toolbar.Tool;
 import dev.emi.emi.api.stack.EmiStack;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -9,7 +11,7 @@ import net.minecraft.client.gui.GuiGraphics;
  * Small toolbar providing drawing tools (pen, line, eraser) and a color picker popup.
  */
 public class DrawingToolbar {
-    public enum Tool { PEN, LINE, ERASER }
+    private final String[] TOOLS = Tool.getAllToolsIDs();
     private Tool currentTool = Tool.PEN;
 
     private int currentDrawingColor = Color.WHITE.getHexValue();
