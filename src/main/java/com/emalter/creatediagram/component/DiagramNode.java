@@ -33,7 +33,7 @@ public record DiagramNode(UUID id, String itemType, int x, int y, String propert
     }
 
     private static int getDefaultHeight(String type) {
-        if (type.equals("creatediagram:text_comment")) return 60;
+        if (type.equals("creatediagram:text_comment")) return 20;;
         return type.contains("mechanical_mixer") ? 60 : 40;
     }
 

@@ -9,12 +9,16 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public record DiagramData(
         List<DiagramNode> nodes,
         List<DiagramEdge> edges,
-        List<CanvasModel.DiagramStroke> strokes
+        List<CanvasModel.DiagramStroke> strokes,
+        double offsetX,
+        double offsetY,
+        float zoom
 ) {
     // Utility codec for a single point [x, y] represented as an int array
     private static final Codec<int[]> POINT_CODEC = Codec.INT.listOf().xmap(
@@ -30,11 +34,24 @@ public record DiagramData(
     ).apply(instance, CanvasModel.DiagramStroke::new));
 
     // Main codec used by the data component and the networking system
+    // offsetX/offsetY/zoom are optional (backwards compatible) with defaults 0.0,0.0,1.0f
     public static final Codec<DiagramData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             DiagramNode.CODEC.listOf().fieldOf("nodes").forGetter(DiagramData::nodes),
             DiagramEdge.CODEC.listOf().fieldOf("edges").forGetter(DiagramData::edges),
-            STROKE_CODEC.listOf().fieldOf("strokes").forGetter(DiagramData::strokes)
-    ).apply(instance, DiagramData::new));
+            STROKE_CODEC.listOf().fieldOf("strokes").forGetter(DiagramData::strokes),
+            Codec.DOUBLE.optionalFieldOf("offsetX").forGetter(d -> Optional.of(d.offsetX())),
+            Codec.DOUBLE.optionalFieldOf("offsetY").forGetter(d -> Optional.of(d.offsetY())),
+            Codec.FLOAT.optionalFieldOf("zoom").forGetter(d -> Optional.of(d.zoom()))
+    ).apply(instance, (nodes, edges, strokes, offXOpt, offYOpt, zoomOpt) ->
+            new DiagramData(
+                    nodes,
+                    edges,
+                    strokes,
+                    offXOpt.orElse(0.0),
+                    offYOpt.orElse(0.0),
+                    zoomOpt.orElse(1.0f)
+            )
+    ));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, DiagramData> STREAM_CODEC =
             ByteBufCodecs.fromCodecWithRegistries(CODEC);

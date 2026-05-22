@@ -10,7 +10,10 @@ public final class CanvasSaveFactory {
         return new DiagramData(
                 canvas.getNodes(),
                 canvas.getEdges(),
-                canvas.getStrokes()
+                canvas.getStrokes(),
+                canvas.getOffsetX(),
+                canvas.getOffsetY(),
+                canvas.getZoom()
         );
     }
 }

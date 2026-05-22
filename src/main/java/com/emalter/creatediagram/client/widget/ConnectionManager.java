@@ -280,8 +280,12 @@ public class ConnectionManager {
                         EmiStack outStack = EmiHelper.getStack(out.itemId());
                         List<Component> tooltip = new ArrayList<>(outStack.getTooltipText());
 
-                        int chance = (int)(out.chance() * 100);
-                        tooltip.add(Component.literal(chance + "%").withStyle(chance == 100 ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.GRAY));
+                        float rawChance = out.chance();
+                        if (rawChance > 1.0f) rawChance = rawChance / 100.0f; // handle chances given as 100-based values
+                        int chancePercent = Math.round(rawChance * 100f);
+                        if (chancePercent < 0) chancePercent = 0;
+                        if (chancePercent > 100) chancePercent = 100;
+                        tooltip.add(Component.literal(chancePercent + "%").withStyle(chancePercent == 100 ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.GRAY));
 
                         gui.pose().pushPose();
                         gui.pose().translate(0, 0, 400);
