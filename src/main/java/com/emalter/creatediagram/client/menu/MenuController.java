@@ -7,7 +7,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 
 /**
- * Controller for the palette menu panel. Exposes public interface and handles
+ * Controller for the palette menu panel. Exposes public interfaces and handles
  * interaction between View and Model.
  */
 public class MenuController {
@@ -160,13 +160,7 @@ public class MenuController {
     public void unfocusSearch() {
         view.getSearchBox().setFocused(false);
     }
-
-    public Item getDraggingItem() {
-        EmiStack draggingStack = model.getDraggingStack();
-        if (draggingStack == null) return null;
-        if (draggingStack.getKey() instanceof Item item) return item;
-        return Items.WATER_BUCKET;
-    }
+    
 
     public String getDraggingItemId() {
         EmiStack draggingStack = model.getDraggingStack();

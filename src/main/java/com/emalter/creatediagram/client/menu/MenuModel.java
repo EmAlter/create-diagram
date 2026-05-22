@@ -13,7 +13,7 @@ import net.minecraft.world.item.Items;
 import java.util.*;
 
 /**
- * Model for the palette menu panel. Manages all state related to item data, scrolling,
+ * Model for the palette menu panel. Manages all states related to item data, scrolling,
  * searching, and UI state.
  */
 public class MenuModel {
@@ -34,7 +34,6 @@ public class MenuModel {
     private final Map<String, List<EmiStack>> modRegistry = new HashMap<>();
     private final List<String> availableMods = new ArrayList<>();
     private String selectedMod = "create";
-    private String searchQuery = "";
 
     // Search box state
     private String searchBoxValue = "";
@@ -62,6 +61,9 @@ public class MenuModel {
         buildRegistryCache();
     }
 
+    /* 
+    
+     */
     private void buildRegistryCache() {
         modRegistry.clear();
         availableMods.clear();
@@ -79,6 +81,12 @@ public class MenuModel {
         Collections.sort(availableMods);
     }
 
+    /**
+     * Gets an icon for the given mod ID. Tries known fallbacks first, then looks for a creative tab icon,
+     * then picks a random item from the mod, and finally defaults to a chest icon if nothing else is found.
+     * @param modid The mod ID to get the icon for
+     * @return The icon for the specified mod 
+     */
     public ItemStack getModIcon(String modid) {
         return modIconCache.computeIfAbsent(modid, id -> {
             ResourceLocation res = switch (id) {
@@ -108,12 +116,15 @@ public class MenuModel {
         });
     }
 
+    /**
+     * Gets a list of items to render based on the current search query and selected mod.
+     * @return A list of items to render
+     */
     public List<EmiStack> getItemsToRender() {
         List<EmiStack> itemsToRender = new ArrayList<>();
         String query = searchBoxValue.toLowerCase();
-        boolean isSearching = !query.isEmpty();
 
-        if (isSearching) {
+        if (!query.isEmpty()) {
             for (List<EmiStack> items : modRegistry.values()) {
                 for (EmiStack stack : items) {
                     if (stack.getName().getString().toLowerCase().contains(query)) {
