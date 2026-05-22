@@ -6,6 +6,7 @@ import com.emalter.creatediagram.logic.EmiHelper;
 import com.emalter.creatediagram.component.RecipeOutput;
 import net.minecraft.client.gui.GuiGraphics;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -119,9 +120,7 @@ public class EdgeController {
                     }
                 }
             }
-        }
-
-        // Handle right-click (delete incoming connections)
+        } 
         if (button == 1) {
             for (int index = 0; index < nodes.size(); index++) {
                 DiagramNode node = nodes.get(index);

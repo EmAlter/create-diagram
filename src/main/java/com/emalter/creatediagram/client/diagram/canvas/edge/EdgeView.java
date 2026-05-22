@@ -13,6 +13,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.renderer.GameRenderer;
+import org.joml.Matrix4f;
+
 /**
  * View for edge rendering in the canvas. Handles visual representation of edges,
  * connection lines, tooltips, and UI elements like the quantity slider.
@@ -204,8 +213,12 @@ public class EdgeView {
                         EmiStack outStack = EmiHelper.getStack(out.itemId());
                         List<Component> tooltip = new ArrayList<>(outStack.getTooltipText());
 
-                        int chance = (int)(out.chance() * 100);
-                        tooltip.add(Component.literal(chance + "%").withStyle(chance == 100 ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.GRAY));
+                        float rawChance = out.chance();
+                        if (rawChance > 1.0f) rawChance = rawChance / 100.0f;
+                        int chancePercent = Math.round(rawChance * 100f);
+                        if (chancePercent < 0) chancePercent = 0;
+                        if (chancePercent > 100) chancePercent = 100;
+                        tooltip.add(Component.literal(chancePercent + "%").withStyle(chancePercent == 100 ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.GRAY));
 
                         gui.pose().pushPose();
                         gui.pose().translate(0, 0, 400);
@@ -220,19 +233,60 @@ public class EdgeView {
     }
 
     private void drawBezierCurve(GuiGraphics gui, int x1, int y1, int x2, int y2, int color) {
-        int segments = 40;
-        int dist = Math.abs(x2 - x1) / 2;
-        int weight = Math.max(dist, 40);
+        if (x1 == x2 && y1 == y2) return;
+
+        float distance = (float) Math.hypot(x2 - x1, y2 - y1);
+        int segments = Math.max(10, Math.min(30, (int) (distance / 8)));
+
+        int distX = Math.abs(x2 - x1) / 2;
+        int weight = Math.max(distX, 40);
         int cp1x = x1 + weight, cp1y = y1;
         int cp2x = x2 - weight, cp2y = y2;
 
-        for (int i = 0; i <= segments; i++) {
+        int a = (color >> 24) & 255;
+        int r = (color >> 16) & 255;
+        int g = (color >> 8) & 255;
+        int b = color & 255;
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder bufferbuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+
+        Matrix4f matrix = gui.pose().last().pose();
+        float thickness = 1.5f;
+
+        int lastX = x1;
+        int lastY = y1;
+
+        for (int i = 1; i <= segments; i++) {
             float t = i / (float) segments;
             float u = 1 - t;
             int px = (int) (u*u*u*x1 + 3*u*u*t*cp1x + 3*u*t*t*cp2x + t*t*t*x2);
             int py = (int) (u*u*u*y1 + 3*u*u*t*cp1y + 3*u*t*t*cp2y + t*t*t*y2);
-            gui.fill(px - 1, py - 1, px + 1, py + 1, color);
+
+            float dx = px - lastX;
+            float dy = py - lastY;
+            float len = (float) Math.sqrt(dx * dx + dy * dy);
+
+            if (len > 0) {
+                float nx = (dy / len) * thickness;
+                float ny = (-dx / len) * thickness;
+
+                bufferbuilder.addVertex(matrix, lastX + nx, lastY + ny, 0.0F).setColor(r, g, b, a);
+                bufferbuilder.addVertex(matrix, lastX - nx, lastY - ny, 0.0F).setColor(r, g, b, a);
+                bufferbuilder.addVertex(matrix, px - nx, py - ny, 0.0F).setColor(r, g, b, a);
+                bufferbuilder.addVertex(matrix, px + nx, py + ny, 0.0F).setColor(r, g, b, a);
+            }
+
+            lastX = px;
+            lastY = py;
         }
+
+        BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        RenderSystem.disableBlend();
     }
 
     private int[] getBezierMidPoint(int x1, int y1, int x2, int y2) {

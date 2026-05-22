@@ -10,6 +10,7 @@ import net.minecraft.client.gui.GuiGraphics;
 /**
  * Small toolbar providing drawing tools (pen, line, eraser) and a color picker popup.
  */
+@Deprecated(since = "0.0.2", forRemoval = true)
 public class DrawingToolbar {
     private final String[] TOOLS = Tool.getAllToolsIDs();
     private Tool currentTool = Tool.PEN;

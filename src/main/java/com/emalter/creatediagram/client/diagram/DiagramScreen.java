@@ -67,6 +67,10 @@ public class DiagramScreen extends Screen {
             if (data.strokes() != null && !data.strokes().isEmpty()) {
                 this.canvas.setStrokes(data.strokes());
             }
+
+            // Restore last known camera offset and zoom (defaults handled by codec)
+            this.canvas.setOffset(data.offsetX(), data.offsetY());
+            this.canvas.setZoom(data.zoom());
         }
     }
 

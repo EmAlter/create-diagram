@@ -127,17 +127,6 @@ public class CanvasModel {
 		return true;
 	}
 
-	public void openColorMenu(int anchorX, int anchorY) {
-		isColorMenuOpen = true;
-		colorMenuAnchorX = anchorX;
-		colorMenuAnchorY = anchorY;
-	}
-
-	public void closeColorMenu() {
-		isColorMenuOpen = false;
-	}
-
-
 	public void closeAndSaveAmountField() {
 		if (nodeWithActiveAmountField != null && activeAmountField != null) {
 			DiagramNode node = findNode(nodeWithActiveAmountField);
@@ -160,5 +149,10 @@ public class CanvasModel {
 		this.activeAmountField = null;
 		this.nodeWithActiveAmountField = null;
 	}
+
+	protected double getOffsetX() { return this.offsetX; }
+	protected double getOffsetY() { return this.offsetY; }
+	protected void setOffset(double x, double y) { this.offsetX = x; this.offsetY = y; }
+	protected void setZoom(float zoom) { this.zoom = zoom; }
 }
 

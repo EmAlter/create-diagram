@@ -10,6 +10,15 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.renderer.GameRenderer;
+import org.joml.Matrix4f;
+
 public class CanvasView {
     private final Font font;
 
@@ -46,7 +55,7 @@ public class CanvasView {
 
         if (model.nodeWithOpenMenu != null) {
             guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 3);
+            guiGraphics.pose().translate(0, 0, 250);
             drawCatalystMenu(guiGraphics, model.nodeWithOpenMenu, model);
             guiGraphics.pose().popPose();
         }
@@ -100,23 +109,87 @@ public class CanvasView {
 
     private void drawStroke(GuiGraphics guiGraphics, CanvasModel.DiagramStroke stroke) {
         if (stroke.points().size() < 2) return;
+        
+        boolean hasDistance = false;
+        for (int i = 0; i < stroke.points().size() - 1; i++) {
+            if (stroke.points().get(i)[0] != stroke.points().get(i+1)[0] || stroke.points().get(i)[1] != stroke.points().get(i+1)[1]) {
+                hasDistance = true; break;
+            }
+        }
+        if (!hasDistance) return;
+
+        int color = stroke.color();
+        int a = (color >> 24) & 255;
+        int r = (color >> 16) & 255;
+        int g = (color >> 8) & 255;
+        int b = color & 255;
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder bufferbuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        Matrix4f matrix = guiGraphics.pose().last().pose();
+        float thickness = 1.0f;
+
         for (int i = 0; i < stroke.points().size() - 1; i++) {
             int[] p1 = stroke.points().get(i);
             int[] p2 = stroke.points().get(i + 1);
-            drawFastLine(guiGraphics, p1[0], p1[1], p2[0], p2[1], stroke.color());
+
+            float dx = p2[0] - p1[0];
+            float dy = p2[1] - p1[1];
+            float len = (float) Math.sqrt(dx * dx + dy * dy);
+
+            if (len > 0) {
+                float nx = (dy / len) * thickness;
+                float ny = (-dx / len) * thickness;
+
+                bufferbuilder.addVertex(matrix, p1[0] + nx, p1[1] + ny, 0.0F).setColor(r, g, b, a);
+                bufferbuilder.addVertex(matrix, p1[0] - nx, p1[1] - ny, 0.0F).setColor(r, g, b, a);
+                bufferbuilder.addVertex(matrix, p2[0] - nx, p2[1] - ny, 0.0F).setColor(r, g, b, a);
+                bufferbuilder.addVertex(matrix, p2[0] + nx, p2[1] + ny, 0.0F).setColor(r, g, b, a);
+            }
         }
+
+        BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        RenderSystem.disableBlend();
     }
 
     private void drawFastLine(GuiGraphics gui, int x1, int y1, int x2, int y2, int color) {
+        if (x1 == x2 && y1 == y2) return;
+
+        int a = (color >> 24) & 255;
+        int r = (color >> 16) & 255;
+        int g = (color >> 8) & 255;
+        int b = color & 255;
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder bufferbuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+
+        Matrix4f matrix = gui.pose().last().pose();
+        float thickness = 1.0f;
+
         float dx = x2 - x1;
         float dy = y2 - y1;
-        float length = (float) Math.sqrt(dx * dx + dy * dy);
-        float angle = (float) Math.atan2(dy, dx);
-        gui.pose().pushPose();
-        gui.pose().translate(x1, y1, 0);
-        gui.pose().mulPose(com.mojang.math.Axis.ZP.rotation(angle));
-        gui.fill(0, -1, (int) Math.ceil(length), 1, color);
-        gui.pose().popPose();
+        float len = (float) Math.sqrt(dx * dx + dy * dy);
+
+        if (len > 0) {
+            float nx = (dy / len) * thickness;
+            float ny = (-dx / len) * thickness;
+
+            bufferbuilder.addVertex(matrix, x1 + nx, y1 + ny, 0.0F).setColor(r, g, b, a);
+            bufferbuilder.addVertex(matrix, x1 - nx, y1 - ny, 0.0F).setColor(r, g, b, a);
+            bufferbuilder.addVertex(matrix, x2 - nx, y2 - ny, 0.0F).setColor(r, g, b, a);
+            bufferbuilder.addVertex(matrix, x2 + nx, y2 + ny, 0.0F).setColor(r, g, b, a);
+        }
+
+        BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        RenderSystem.disableBlend();
     }
 
     private void drawNode(GuiGraphics guiGraphics, DiagramNode node, CanvasModel model) {
@@ -248,21 +321,5 @@ public class CanvasView {
             guiGraphics.pose().popPose();
         }
     }
-
-    private void drawNodeColorMenu(GuiGraphics guiGraphics, java.util.UUID nodeId, CanvasModel model) {
-        DiagramNode node = model.findNode(nodeId);
-        if (node == null) return;
-        Color[] colors = Color.values();
-        int menuX = node.x() + node.width() + 20;
-        int menuY = node.y() + (node.height() / 2) - 8;
-        guiGraphics.fill(menuX, menuY, menuX + 20, menuY + (colors.length * 20), 0xEE222222);
-        guiGraphics.renderOutline(menuX, menuY, 20, colors.length * 20, 0xFFFFAA00);
-        for (int i = 0; i < colors.length; i++) {
-            EmiStack stack = EmiHelper.getStack(colors[i].getDyeId());
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(menuX + 2, menuY + 2 + (i * 20), 0);
-            stack.render(guiGraphics, 0, 0, 0f);
-            guiGraphics.pose().popPose();
-        }
-    }
+    
 }

@@ -6,6 +6,7 @@ import com.emalter.creatediagram.logic.EmiHelper;
 import com.emalter.creatediagram.logic.RecipeEngine;
 import com.emalter.creatediagram.component.RecipeOutput;
 
+
 import java.util.*;
 
 /**
@@ -33,16 +34,16 @@ public class EdgeModel {
     private int sliderMax = 1;
     private int sliderValue = 1;
     private boolean isDraggingSlider = false;
+    
+    private final Map<UUID, List<RecipeOutput>> outputCache = new HashMap<>();
+    private long lastCacheTime = 0;
+    private long lastCleanTime = 0;
 
     public void addEdge(DiagramEdge edge) {
         if (!edges.contains(edge)) this.edges.add(edge);
     }
 
-    public List<RecipeOutput> getDynamicOutputs(DiagramNode node, List<DiagramNode> allNodes) {
-        return getDynamicOutputs(node, allNodes, new HashSet<>());
-    }
-
-    private List<RecipeOutput> getDynamicOutputs(DiagramNode node, List<DiagramNode> allNodes, Set<UUID> visited) {
+    private List<RecipeOutput> getDynamicOutputsInternal(DiagramNode node, List<DiagramNode> allNodes, Set<UUID> visited) {
         if (visited.contains(node.id())) return List.of();
         visited.add(node.id());
 
@@ -51,6 +52,31 @@ public class EdgeModel {
         return recipeEngine.getOutputs(id, node.property(), inputs);
     }
 
+    public List<RecipeOutput> getDynamicOutputs(DiagramNode node, List<DiagramNode> allNodes) {
+        long currentTime = System.currentTimeMillis();
+
+        // Svuota la cache se è passato un po' di tempo (es. 250ms)
+        // In questo modo le ricette si aggiornano se colleghi un nuovo cavo, ma non 60 volte al secondo!
+        if (currentTime - lastCacheTime > 250) {
+            outputCache.clear();
+            lastCacheTime = currentTime;
+        }
+
+        // Se abbiamo già calcolato la ricetta per questo nodo di recente, restituisci il salvataggio istantaneo!
+        if (outputCache.containsKey(node.id())) {
+            return outputCache.get(node.id());
+        }
+
+        // Altrimenti, fai il calcolo pesante
+        List<RecipeOutput> result = getDynamicOutputsInternal(node, allNodes, new HashSet<>());
+
+        // Salva il risultato nella cache per le prossime richieste
+        outputCache.put(node.id(), result);
+        return result;
+    }
+    
+    
+    
     private Map<String, Integer> getIncomingItems(DiagramNode machine, List<DiagramNode> allNodes, Set<UUID> visited) {
         Map<String, Integer> incoming = new HashMap<>();
 
@@ -108,6 +134,10 @@ public class EdgeModel {
     }
 
     public void triggerCascadeClean(List<DiagramNode> nodes) {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastCleanTime < 250) return;
+        lastCleanTime = currentTime;
+
         for (DiagramNode node : nodes) {
             cleanOrphanEdges(node.id(), nodes);
         }

@@ -13,6 +13,7 @@ public class EmiHelper {
     private static final Set<String> VALID_MACHINES = new HashSet<>();
     private static final Set<String> VALID_INPUTS = new HashSet<>();
     private static final Set<String> HIDDEN_MENU_ITEMS = Set.of("create:basin");
+    private static final Map<String, List<String>> catalystCache = new HashMap<>();
     private static boolean isInitialized = false;
 
     public enum HeatLevel {
@@ -93,33 +94,42 @@ public class EmiHelper {
 
     public static List<String> getValidCatalystsForMachine(String machineId) {
         if (!isInitialized) initCache();
-        Set<String> catalysts = new LinkedHashSet<>();
-        HeatLevel highestHeat = HeatLevel.NONE;
 
-        if (machineId.equals("create:encased_fan")) {
-            catalysts.addAll(List.of("minecraft:water", "minecraft:lava", "minecraft:campfire", "minecraft:soul_campfire"));
-        }
+        // computeIfAbsent controlla se la macchina è già in cache.
+        // Se c'è, restituisce subito la lista. Altrimenti, esegue il calcolo.
+        return catalystCache.computeIfAbsent(machineId, id -> {
+            Set<String> catalysts = new LinkedHashSet<>();
+            HeatLevel highestHeat = HeatLevel.NONE;
 
-        for (EmiRecipe recipe : getRecipesForMachine(machineId)) {
-            highestHeat = HeatLevel.max(highestHeat, getRecipeHeatLevel(recipe));
+            // 1. Hardcode per la Ventola (Encased Fan)
+            if (id.equals("create:encased_fan")) {
+                catalysts.addAll(List.of("minecraft:water", "minecraft:lava", "minecraft:campfire", "minecraft:soul_campfire"));
+            }
 
-            for (EmiIngredient cat : recipe.getCatalysts()) {
-                for (EmiStack stack : cat.getEmiStacks()) {
-                    String id = stack.getId().toString();
-                    if (!id.equals(machineId)) catalysts.add(id);
+            // 2. Iterazione sulle ricette di EMI
+            for (EmiRecipe recipe : getRecipesForMachine(id)) {
+                highestHeat = HeatLevel.max(highestHeat, getRecipeHeatLevel(recipe));
+
+                for (EmiIngredient cat : recipe.getCatalysts()) {
+                    for (EmiStack stack : cat.getEmiStacks()) {
+                        String stackId = stack.getId().toString();
+                        if (!stackId.equals(id)) catalysts.add(stackId);
+                    }
                 }
             }
-        }
 
-        if (highestHeat != HeatLevel.NONE) {
-            catalysts.add("create:empty_blaze_burner");
-            catalysts.add("create:blaze_burner");
-            if (highestHeat == HeatLevel.SUPERHEATED) {
-                catalysts.add("create:blaze_cake");
+            // 3. Gestione del Calore (Blaze Burner)
+            if (highestHeat != HeatLevel.NONE) {
+                catalysts.add("create:empty_blaze_burner");
+                catalysts.add("create:blaze_burner");
+                if (highestHeat == HeatLevel.SUPERHEATED) {
+                    catalysts.add("create:blaze_cake");
+                }
             }
-        }
 
-        return new ArrayList<>(catalysts);
+            // Restituisce la lista, che verrà automaticamente salvata nella mappa catalystCache
+            return new ArrayList<>(catalysts);
+        });
     }
 
     private static List<EmiRecipe> getRecipesForMachine(String machineId) {
