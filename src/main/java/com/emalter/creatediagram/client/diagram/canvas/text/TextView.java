@@ -37,7 +37,10 @@ public class TextView {
             UUID nodeId = model.getNodeWithOpenColorMenu();
             DiagramNode node = findNode(nodes, nodeId);
             if (node != null) {
+                guiGraphics.pose().pushPose();
+                guiGraphics.pose().translate(0, 0, 250);
                 renderColorMenu(guiGraphics, node, model);
+                guiGraphics.pose().popPose();
             }
         }
     }

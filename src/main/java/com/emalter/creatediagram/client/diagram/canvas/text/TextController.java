@@ -75,9 +75,7 @@ public class TextController {
                 return true; // Consuma il click
             }
         }
-
-        // IMPORTANTE: Ritorniamo false per i click generici sul nodo, 
-        // lasciando al CanvasController il compito di gestire Drag, Ridimensionamento e Selezione.
+        
         return false;
     }
 

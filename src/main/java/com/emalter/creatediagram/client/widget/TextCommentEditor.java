@@ -1,7 +1,8 @@
-package com.emalter.creatediagram.client.diagram.canvas.text;
+package com.emalter.creatediagram.client.widget;
 
 import java.util.UUID;
 
+@Deprecated(since = "0.0.2", forRemoval = true)
 public class TextCommentEditor {
     private UUID editingNodeId = null;
     private String currentText = "";
