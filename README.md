@@ -78,4 +78,6 @@ This mod is built following strict **Data-Driven** architecture patterns:
 
 The mod is still in beta, if you have suggestions, bugs to report, or want to contribute, feel free to open an **Issue** or a **Pull Request**!
 
+I am not good in drawing items and stuff, if you want to help me to draw a better logo and items, feel free to contact me!
+
 [![Buy Me A Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=emalter&button_colour=FFDD00&font_colour=000000&font_family=Bree&outline_colour=000000&coffee_colour=ffffff)](https://www.buymeacoffee.com/emalter)
