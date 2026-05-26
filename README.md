@@ -2,6 +2,10 @@
 
 **Create Diagram** is a Minecraft (NeoForge) mod designed to revolutionize the way you plan your factories. Forget paper sketches or randomly placed blocks: this mod provides you with a full in-game flowchart editor, perfectly integrated with the mechanics, recipes, and graphics of the Create mod and all its add-ons (e.g., Create: New Age).
 
+![GitHub Release](https://img.shields.io/github/v/release/emalter/create-diagram?color=E4FF00)
+![Modrinth Downloads](https://img.shields.io/modrinth/dt/TBGyFoyW?style=flat&logo=modrinth&label=Modrinth&color=00AF5C)
+![CurseForge Downloads](https://img.shields.io/curseforge/dt/1549737?style=flat&logo=curseforge&label=CurseForge&color=F16436)
+
 ---
 
 ## ✨ Key Features
