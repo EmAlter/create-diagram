@@ -1,10 +1,24 @@
+# 🐛 BUGS AND DEVELOPER NOTES ⚠️
+
+The mod is still in beta, if you have suggestions, bugs to report, or want to contribute, feel free to open an **Issue**, a **Pull Request** or a **New Discussion**!
+
+I am not good in drawing items and stuff, if you want to help me to draw a better logo or anything else, feel free to contact me! 
+I'll appreciate it!
+
+![Requires Create](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/requires/create_vector.svg)
+[![NeoForge](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/neoforge_vector.svg)](https://neoforged.net/)
+[![curseforge](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/curseforge_vector.svg)](https://www.curseforge.com/minecraft/mc-mods/create-diagram)
+[![modrinth](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg)](https://modrinth.com/mod/TBGyFoyW)
+
+
+---
 # ⚙️ Create Diagram — Blueprint Editor
+**Create Diagram** is a Minecraft mod designed to revolutionize the way you plan your factories. Forget paper sketches or randomly placed blocks: this mod provides you with a full in-game flowchart editor, perfectly integrated with the mechanics, recipes, and graphics of the Create mod and all its add-ons (e.g., Create: New Age).
 
-**Create Diagram** is a Minecraft (NeoForge) mod designed to revolutionize the way you plan your factories. Forget paper sketches or randomly placed blocks: this mod provides you with a full in-game flowchart editor, perfectly integrated with the mechanics, recipes, and graphics of the Create mod and all its add-ons (e.g., Create: New Age).
-
-![GitHub Release](https://img.shields.io/github/v/release/emalter/create-diagram?color=E4FF00)
-![Modrinth Downloads](https://img.shields.io/modrinth/dt/TBGyFoyW?style=flat&logo=modrinth&label=Modrinth&color=00AF5C)
-![CurseForge Downloads](https://img.shields.io/curseforge/dt/1549737?style=flat&logo=curseforge&label=CurseForge&color=F16436)
+[![GitHub Release](https://img.shields.io/github/v/release/emalter/create-diagram?color=E4FF00)](https://github.com/emalter/create-diagram/releases)
+[![Modrinth Downloads](https://img.shields.io/modrinth/dt/TBGyFoyW?style=flat&logo=modrinth&label=Modrinth&color=00AF5C)](https://modrinth.com/mod/TBGyFoyW)
+[![CurseForge Downloads](https://img.shields.io/curseforge/dt/1549737?style=flat&logo=curseforge&label=CurseForge&color=F16436)](https://www.curseforge.com/minecraft/mc-mods/create-diagram)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/emalter)
 
 ---
 
@@ -70,7 +84,7 @@
 
 ---
 
-## 👨‍💻 Developer Notes
+## 👨‍💻 Notes
 
 This mod is built following strict **Data-Driven** architecture patterns:
 
@@ -78,10 +92,3 @@ This mod is built following strict **Data-Driven** architecture patterns:
 - Client-Server communication uses non-blocking `CustomPacketPayload` interfaces.
 - Fluid and item flow renderings bypass hardcoded checks, delegating ID analysis to `EmiStack`. If a gas or fluid is detected, it will automatically be formatted with the `mB` suffix.
 
-## 🐛 BUGS
-
-The mod is still in beta, if you have suggestions, bugs to report, or want to contribute, feel free to open an **Issue** or a **Pull Request**!
-
-I am not good in drawing items and stuff, if you want to help me to draw a better logo and items, feel free to contact me!
-
-[![Buy Me A Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=emalter&button_colour=FFDD00&font_colour=000000&font_family=Bree&outline_colour=000000&coffee_colour=ffffff)](https://www.buymeacoffee.com/emalter)
