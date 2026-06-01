@@ -3,13 +3,9 @@ package com.emalter.creatediagram.client.menu;
 import dev.emi.emi.api.stack.EmiStack;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 
-/**
- * Controller for the palette menu panel. Exposes public interfaces and handles
- * interaction between View and Model.
- */
 public class MenuController {
     private final MenuModel model;
     private final MenuView view;
@@ -31,7 +27,7 @@ public class MenuController {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int localX = (int) (mouseX - model.getCurrentX());
 
-        // Panel toggle button
+        // Pulsante toggle laterale (sempre cliccabile)
         if (localX >= model.getWidth() && localX <= model.getWidth() + 12 &&
                 mouseY >= model.getHeight() / 2f - 20 && mouseY <= model.getHeight() / 2f + 20) {
             model.setIsOpen(!model.getIsOpen());
@@ -39,23 +35,17 @@ public class MenuController {
         }
 
         if (localX > model.getWidth() || localX < 0) return false;
+        
+        if (!model.isLoaded()) return true;
 
-        // Scrollbar
         if (localX >= model.getWidth() - 10) {
             model.setScrolling(true);
-            view.updateScrollFromMouse(mouseY);
+            updateScrollFromMouse(mouseY);
             return true;
         }
 
-        // Search box
-        if (view.getSearchBox().mouseClicked(localX, mouseY, button)) {
-            view.getSearchBox().setFocused(true);
-            return true;
-        } else {
-            view.getSearchBox().setFocused(false);
-        }
+        if (view.mouseClickedSearch(localX, mouseY, button)) return true;
 
-        // Category selection
         if (mouseY >= 23 && mouseY <= 45) {
             int iconX = 10 - (int) model.getCategoryScrollOffset();
             for (String mod : model.getAvailableMods()) {
@@ -67,7 +57,6 @@ public class MenuController {
             }
         }
 
-        // Item selection/dragging
         if (button == 0) {
             int cols = 6;
             int iconSize = 24;
@@ -85,21 +74,21 @@ public class MenuController {
     }
 
     public void mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (model.isScrolling()) {
-            view.updateScrollFromMouse(mouseY);
+        if (model.isScrolling() && model.isLoaded()) {
+            updateScrollFromMouse(mouseY);
         }
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+        if (!model.isLoaded()) return false;
+
         int localX = (int) (mouseX - model.getCurrentX());
 
-        // Horizontal scrolling for categories
         if (localX >= 0 && localX <= model.getWidth() && mouseY >= 20 && mouseY <= 45) {
-            view.updateCategoryScroll(scrollY);
+            updateCategoryScroll(scrollY);
             return true;
         }
 
-        // Vertical scrolling for items
         if (isMouseOverPanel(mouseX, mouseY)) {
             int newScroll = (int) (model.getScrollY() - scrollY * 25);
             model.setScrollY(Math.max(0, Math.min(newScroll, model.getMaxScroll())));
@@ -109,71 +98,57 @@ public class MenuController {
         return false;
     }
 
+    private void updateScrollFromMouse(double mouseY) {
+        int listTop = 70;
+        int sbHeight = model.getHeight() - listTop - 10;
+        float pct = (float) (mouseY - listTop) / sbHeight;
+        model.setScrollY((int) (Mth.clamp(pct, 0, 1) * model.getMaxScroll()));
+    }
+
+    private void updateCategoryScroll(double scrollDelta) {
+        int totalCategoriesWidth = model.getAvailableMods().size() * 24;
+        int maxVisibleWidth = model.getWidth() - 20;
+        double maxCatScroll = Math.max(0, totalCategoriesWidth - maxVisibleWidth);
+        double newOffset = model.getCategoryScrollOffset() - scrollDelta * 20;
+        model.setCategoryScrollOffset(Mth.clamp(newOffset, 0, maxCatScroll));
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        return view.getSearchBox().isFocused() && view.getSearchBox().keyPressed(keyCode, scanCode, modifiers);
+        return model.isLoaded() && view.keyPressedSearch(keyCode, scanCode, modifiers);
     }
 
     public boolean charTyped(char codePoint, int modifiers) {
-        return view.getSearchBox().isFocused() && view.getSearchBox().charTyped(codePoint, modifiers);
+        return model.isLoaded() && view.charTypedSearch(codePoint, modifiers);
     }
 
-    // Public API methods
-    public boolean getIsOpen() {
-        return model.getIsOpen();
-    }
-
-    public void setIsOpen(boolean isOpen) {
-        model.setIsOpen(isOpen);
-    }
-
-    public int getWidth() {
-        return model.getWidth();
-    }
-
-    public boolean isScrolling() {
-        return model.isScrolling();
-    }
-
-    public void setScrolling(boolean scrolling) {
-        model.setScrolling(scrolling);
-    }
+    public boolean getIsOpen() { return model.getIsOpen(); }
+    public void setIsOpen(boolean isOpen) { model.setIsOpen(isOpen); }
+    public int getWidth() { return model.getWidth(); }
+    public boolean isScrolling() { return model.isScrolling(); }
+    public void setScrolling(boolean scrolling) { model.setScrolling(scrolling); }
 
     public boolean isMouseOverPanel(double mouseX, double mouseY) {
-        // Always allow clicks on the small toggle button so the panel can be reopened
         float toggleLeft = model.getCurrentX() + model.getWidth();
         float toggleRight = toggleLeft + 12;
         float toggleTop = model.getHeight() / 2f - 20;
         float toggleBottom = model.getHeight() / 2f + 20;
 
-        if (mouseX >= toggleLeft && mouseX <= toggleRight && mouseY >= toggleTop && mouseY <= toggleBottom) {
-            return true;
-        }
-
-        // When panel is open, treat the full panel area as the hit region; when closed, clicks
-        // outside the toggle button should fall through to the canvas (so zoom/interaction works).
+        if (mouseX >= toggleLeft && mouseX <= toggleRight && mouseY >= toggleTop && mouseY <= toggleBottom) return true;
         if (!model.getIsOpen()) return false;
 
         return mouseX >= model.getCurrentX() && mouseX <= model.getCurrentX() + model.getWidth() + 15
                 && mouseY >= 0 && mouseY <= model.getHeight();
     }
 
-    public void unfocusSearch() {
-        view.getSearchBox().setFocused(false);
-    }
-    
+    public void unfocusSearch() { view.unfocusSearch(); }
 
     public String getDraggingItemId() {
         EmiStack draggingStack = model.getDraggingStack();
-        if (draggingStack != null) {
-            return draggingStack.getId().toString();
-        }
+        if (draggingStack != null) return draggingStack.getId().toString();
         return null;
     }
 
     public void setDraggingItem(Item item) {
-        if (item == null) {
-            model.setDraggingStack(null);
-        }
+        if (item == null) model.setDraggingStack(null);
     }
 }
-

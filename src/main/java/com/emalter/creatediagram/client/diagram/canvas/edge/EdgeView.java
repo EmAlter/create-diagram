@@ -1,17 +1,13 @@
 package com.emalter.creatediagram.client.diagram.canvas.edge;
 
+import com.emalter.creatediagram.client.diagram.canvas.CanvasController;
 import com.emalter.creatediagram.component.DiagramEdge;
 import com.emalter.creatediagram.component.DiagramNode;
-import com.emalter.creatediagram.logic.EmiHelper;
-import com.emalter.creatediagram.component.RecipeOutput;
-import dev.emi.emi.api.stack.EmiStack;
+import com.emalter.creatediagram.component.OutputPort;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.network.chat.Component;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -22,48 +18,36 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
 
-/**
- * View for edge rendering in the canvas. Handles visual representation of edges,
- * connection lines, tooltips, and UI elements like the quantity slider.
- */
 public class EdgeView {
-    private final EdgeModel model;
 
     public EdgeView(EdgeModel model) {
-        this.model = model;
     }
 
-    public void render(GuiGraphics guiGraphics, List<DiagramNode> nodes, double worldX, double worldY) {
+    public void render(GuiGraphics guiGraphics, EdgeModel model, CanvasController canvasController) {
         Font font = net.minecraft.client.Minecraft.getInstance().font;
 
         for (DiagramEdge edge : model.getEdges()) {
-            renderEdge(guiGraphics, edge, nodes, font);
+            renderEdge(guiGraphics, edge, canvasController, font, model);
         }
 
-        // Render slider if open
         if (model.getEdgeWithOpenSlider() != null) {
-            renderSlider(guiGraphics, font);
+            renderSlider(guiGraphics, font, model);
         }
 
-        // Render dragging connection
         if (model.getDraggingFromNode() != null) {
-            renderDraggingConnection(guiGraphics, nodes);
+            renderDraggingConnection(guiGraphics, model, canvasController);
         }
-
-        // Render port indicators on nodes
-        renderPortIndicators(guiGraphics, nodes, font);
     }
 
-    private void renderEdge(GuiGraphics guiGraphics, DiagramEdge edge, List<DiagramNode> nodes, Font font) {
-        DiagramNode from = findNode(nodes, edge.fromNode());
-        DiagramNode to = findNode(nodes, edge.toNode());
+    private void renderEdge(GuiGraphics guiGraphics, DiagramEdge edge, CanvasController canvasController, Font font, EdgeModel model) {
+        DiagramNode from = canvasController.findNode(edge.fromNode());
+        DiagramNode to = canvasController.findNode(edge.toNode());
 
         if (from == null || to == null) return;
 
         int startX, startY;
-
-        if (EmiHelper.isMachine(from.itemType())) {
-            List<RecipeOutput> outputs = model.getDynamicOutputs(from, nodes);
+        if (canvasController.isMachine(from.itemType())) {
+            List<OutputPort> outputs = canvasController.getDynamicOutputs(from);
             int outIndex = 0;
             for (int i = 0; i < outputs.size(); i++) {
                 if (outputs.get(i).itemId().equals(edge.outputItem())) outIndex = i;
@@ -81,7 +65,7 @@ public class EdgeView {
 
         drawBezierCurve(guiGraphics, startX, startY, endX, endY, 0xFFFFAA00);
 
-        if (EmiHelper.isMachine(from.itemType())) {
+        if (canvasController.isMachine(from.itemType())) {
             int[] midPoint = getBezierMidPoint(startX, startY, endX, endY);
             int badgeX = midPoint[0] - 8;
             int badgeY = midPoint[1] - 6;
@@ -97,37 +81,27 @@ public class EdgeView {
         }
     }
 
-    private void renderSlider(GuiGraphics guiGraphics, Font font) {
-        int sliderX = model.getSliderX();
-        int sliderY = model.getSliderY();
-        int sliderWidth = model.getSliderWidth();
-        int sliderHeight = model.getSliderHeight();
-        int sliderMin = model.getSliderMin();
-        int sliderMax = model.getSliderMax();
-        int sliderValue = model.getSliderValue();
+    private void renderSlider(GuiGraphics guiGraphics, Font font, EdgeModel model) {
+        int sliderX = model.getSliderX(), sliderY = model.getSliderY(), sliderWidth = model.getSliderWidth(), sliderHeight = model.getSliderHeight();
+        int sliderMin = model.getSliderMin(), sliderMax = model.getSliderMax(), sliderValue = model.getSliderValue();
 
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(0, 0, 300);
 
-        // Panel background
         guiGraphics.fill(sliderX - 10, sliderY - 15, sliderX + sliderWidth + 10, sliderY + sliderHeight + 10, 0xEE222222);
         guiGraphics.renderOutline(sliderX - 10, sliderY - 15, sliderWidth + 20, sliderHeight + 25, 0xFFFFAA00);
 
-        // Dynamic text showing current quantity
         String label = "Quantity: " + sliderValue;
         int textW = font.width(label);
         guiGraphics.drawString(font, label, sliderX + (sliderWidth - textW) / 2, sliderY - 11, 0xFFFFFFFF, false);
 
-        // Slider track (dark background)
         guiGraphics.fill(sliderX, sliderY, sliderX + sliderWidth, sliderY + sliderHeight, 0xFF111111);
         guiGraphics.renderOutline(sliderX, sliderY, sliderWidth, sliderHeight, 0xFF555555);
 
-        // Golden fill (styled)
         float fillRatio = sliderMax > sliderMin ? (float)(sliderValue - sliderMin) / (sliderMax - sliderMin) : 0;
         int fillW = (int)(fillRatio * sliderWidth);
         guiGraphics.fill(sliderX + 1, sliderY + 1, sliderX + fillW, sliderY + sliderHeight - 1, 0xFFFFAA00);
 
-        // White thumb
         int thumbX = sliderX + fillW;
         guiGraphics.fill(thumbX - 2, sliderY - 2, thumbX + 2, sliderY + sliderHeight + 2, 0xFFEEEEEE);
         guiGraphics.renderOutline(thumbX - 2, sliderY - 2, 4, sliderHeight + 4, 0xFF333333);
@@ -135,7 +109,7 @@ public class EdgeView {
         guiGraphics.pose().popPose();
     }
 
-    private void renderDraggingConnection(GuiGraphics guiGraphics, List<DiagramNode> nodes) {
+    private void renderDraggingConnection(GuiGraphics guiGraphics, EdgeModel model, CanvasController canvasController) {
         DiagramNode draggingNode = model.getDraggingFromNode();
         int slotIndex = model.getDraggingSlotIndex();
 
@@ -144,7 +118,7 @@ public class EdgeView {
             startX = draggingNode.x() + draggingNode.width() + 8;
             startY = draggingNode.y() + (draggingNode.height() / 2);
         } else {
-            List<RecipeOutput> outputs = model.getDynamicOutputs(draggingNode, nodes);
+            List<OutputPort> outputs = canvasController.getDynamicOutputs(draggingNode);
             int totalOutHeight = outputs.size() * 18;
             startX = draggingNode.x() + draggingNode.width() + 18;
             startY = draggingNode.y() + (draggingNode.height() - totalOutHeight) / 2 + (slotIndex * 18) + 8;
@@ -152,163 +126,72 @@ public class EdgeView {
         drawBezierCurve(guiGraphics, startX, startY, model.getMouseWorldX(), model.getMouseWorldY(), 0x88FFAA00);
     }
 
-    private void renderPortIndicators(GuiGraphics guiGraphics, List<DiagramNode> nodes, Font font) {
-        for (DiagramNode node : nodes) {
-            boolean isMach = EmiHelper.isMachine(node.itemType());
-            int w = node.width();
-            int h = node.height();
+    public int[] getBezierMidPointForEdge(DiagramEdge edge, CanvasController canvasController) {
+        DiagramNode from = canvasController.findNode(edge.fromNode());
+        DiagramNode to = canvasController.findNode(edge.toNode());
+        if (from == null || to == null) return null;
 
-            if (isMach) {
-                int portY = node.y() + (h/2) - 6;
-                guiGraphics.fill(node.x() - 6, portY, node.x() + 2, portY + 12, 0xFF222222);
-                guiGraphics.renderOutline(node.x() - 6, portY, 8, 12, 0xFFAAAAAA);
-
-                List<RecipeOutput> outputs = model.getDynamicOutputs(node, nodes);
-                int outX = node.x() + w + 2;
-                int totalOutHeight = outputs.size() * 18;
-                int startOutY = node.y() + (h - totalOutHeight) / 2;
-
-                for (int i = 0; i < outputs.size(); i++) {
-                    int outY = startOutY + (i * 18);
-                    guiGraphics.fill(outX, outY, outX + 16, outY + 16, 0xFF111111);
-                    guiGraphics.renderOutline(outX, outY, 16, 16, 0xFF444444);
-
-                    EmiStack outStack = EmiHelper.getStack(outputs.get(i).itemId());
-                    int amount = outputs.get(i).amount();
-
-                    guiGraphics.pose().pushPose();
-                    guiGraphics.pose().translate(outX + 4, outY + 4, 0);
-                    guiGraphics.pose().scale(0.5f, 0.5f, 1.0f);
-                    outStack.render(guiGraphics, 0, 0, 0f);
-
-                    if (amount > 1) {
-                        String qtyStr = outStack.getItemStack().isEmpty() ? amount + "mB" : String.valueOf(amount);
-                        guiGraphics.pose().pushPose();
-                        guiGraphics.pose().translate(10, 10, 200);
-                        guiGraphics.pose().scale(1.0f, 1.0f, 1.0f);
-                        guiGraphics.drawString(font, qtyStr, 0, 0, 0xFFFFFFFF, true);
-                        guiGraphics.pose().popPose();
-                    }
-                    guiGraphics.pose().popPose();
-                }
-            } else if (!node.itemType().equals("creatediagram:text_comment")) {
-                guiGraphics.fill(node.x() + w, node.y() + (h/2) - 6, node.x() + w + 8, node.y() + (h/2) + 6, 0xFF222222);
-                guiGraphics.renderOutline(node.x() + w, node.y() + (h/2) - 6, 8, 12, 0xFFAAAAAA);
+        int startX, startY;
+        if (canvasController.isMachine(from.itemType())) {
+            List<OutputPort> outputs = canvasController.getDynamicOutputs(from);
+            int outIndex = 0;
+            for (int i = 0; i < outputs.size(); i++) {
+                if (outputs.get(i).itemId().equals(edge.outputItem())) outIndex = i;
             }
+            startX = from.x() + from.width() + 18;
+            int totalOutHeight = outputs.size() * 18;
+            startY = from.y() + (from.height() - totalOutHeight) / 2 + (outIndex * 18) + 8;
+        } else {
+            startX = from.x() + from.width() + 8;
+            startY = from.y() + (from.height() / 2);
         }
-    }
 
-    public boolean renderTooltips(GuiGraphics gui, int mouseX, int mouseY, double worldX, double worldY, List<DiagramNode> nodes, Font font) {
-        for (DiagramNode node : nodes) {
-            if (EmiHelper.isMachine(node.itemType())) {
-                List<RecipeOutput> outputs = model.getDynamicOutputs(node, nodes);
-                int outX = node.x() + node.width() + 2;
-                int totalOutHeight = outputs.size() * 18;
-                int startOutY = node.y() + (node.height() - totalOutHeight) / 2;
-
-                for (int i = 0; i < outputs.size(); i++) {
-                    int outY = startOutY + (i * 18);
-                    if (worldX >= outX && worldX <= outX + 16 && worldY >= outY && worldY <= outY + 16) {
-                        RecipeOutput out = outputs.get(i);
-                        EmiStack outStack = EmiHelper.getStack(out.itemId());
-                        List<Component> tooltip = new ArrayList<>(outStack.getTooltipText());
-
-                        float rawChance = out.chance();
-                        if (rawChance > 1.0f) rawChance = rawChance / 100.0f;
-                        int chancePercent = Math.round(rawChance * 100f);
-                        if (chancePercent < 0) chancePercent = 0;
-                        if (chancePercent > 100) chancePercent = 100;
-                        tooltip.add(Component.literal(chancePercent + "%").withStyle(chancePercent == 100 ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.GRAY));
-
-                        gui.pose().pushPose();
-                        gui.pose().translate(0, 0, 400);
-                        gui.renderTooltip(font, tooltip, java.util.Optional.empty(), mouseX, mouseY);
-                        gui.pose().popPose();
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+        int endX = to.x() - 6;
+        int endY = to.y() + (to.height() / 2);
+        return getBezierMidPoint(startX, startY, endX, endY);
     }
 
     private void drawBezierCurve(GuiGraphics gui, int x1, int y1, int x2, int y2, int color) {
         if (x1 == x2 && y1 == y2) return;
-
         float distance = (float) Math.hypot(x2 - x1, y2 - y1);
         int segments = Math.max(10, Math.min(30, (int) (distance / 8)));
-
         int distX = Math.abs(x2 - x1) / 2;
         int weight = Math.max(distX, 40);
-        int cp1x = x1 + weight, cp1y = y1;
-        int cp2x = x2 - weight, cp2y = y2;
+        int cp1x = x1 + weight, cp1y = y1, cp2x = x2 - weight, cp2y = y2;
+        int a = (color >> 24) & 255, r = (color >> 16) & 255, g = (color >> 8) & 255, b = color & 255;
 
-        int a = (color >> 24) & 255;
-        int r = (color >> 16) & 255;
-        int g = (color >> 8) & 255;
-        int b = color & 255;
-
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-
+        RenderSystem.enableBlend(); RenderSystem.defaultBlendFunc(); RenderSystem.setShader(GameRenderer::getPositionColorShader);
         Tesselator tesselator = Tesselator.getInstance();
         BufferBuilder bufferbuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-
         Matrix4f matrix = gui.pose().last().pose();
         float thickness = 1.5f;
 
-        int lastX = x1;
-        int lastY = y1;
-
+        int lastX = x1, lastY = y1;
         for (int i = 1; i <= segments; i++) {
-            float t = i / (float) segments;
-            float u = 1 - t;
+            float t = i / (float) segments, u = 1 - t;
             int px = (int) (u*u*u*x1 + 3*u*u*t*cp1x + 3*u*t*t*cp2x + t*t*t*x2);
             int py = (int) (u*u*u*y1 + 3*u*u*t*cp1y + 3*u*t*t*cp2y + t*t*t*y2);
 
-            float dx = px - lastX;
-            float dy = py - lastY;
+            float dx = px - lastX, dy = py - lastY;
             float len = (float) Math.sqrt(dx * dx + dy * dy);
-
             if (len > 0) {
-                float nx = (dy / len) * thickness;
-                float ny = (-dx / len) * thickness;
-
+                float nx = (dy / len) * thickness, ny = (-dx / len) * thickness;
                 bufferbuilder.addVertex(matrix, lastX + nx, lastY + ny, 0.0F).setColor(r, g, b, a);
                 bufferbuilder.addVertex(matrix, lastX - nx, lastY - ny, 0.0F).setColor(r, g, b, a);
                 bufferbuilder.addVertex(matrix, px - nx, py - ny, 0.0F).setColor(r, g, b, a);
                 bufferbuilder.addVertex(matrix, px + nx, py + ny, 0.0F).setColor(r, g, b, a);
             }
-
-            lastX = px;
-            lastY = py;
+            lastX = px; lastY = py;
         }
-
-        BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
-        RenderSystem.disableBlend();
+        BufferUploader.drawWithShader(bufferbuilder.buildOrThrow()); RenderSystem.disableBlend();
     }
 
     private int[] getBezierMidPoint(int x1, int y1, int x2, int y2) {
-        int dist = Math.abs(x2 - x1) / 2;
-        int weight = Math.max(dist, 40);
-        int cp1x = x1 + weight, cp1y = y1;
-        int cp2x = x2 - weight, cp2y = y2;
+        int weight = Math.max(Math.abs(x2 - x1) / 2, 40);
+        int cp1x = x1 + weight, cp1y = y1, cp2x = x2 - weight, cp2y = y2;
         float t = 0.5f, u = 0.5f;
         int px = (int) (u*u*u*x1 + 3*u*u*t*cp1x + 3*u*t*t*cp2x + t*t*t*x2);
         int py = (int) (u*u*u*y1 + 3*u*u*t*cp1y + 3*u*t*t*cp2y + t*t*t*y2);
         return new int[]{px, py};
     }
-
-    private DiagramNode findNode(List<DiagramNode> nodes, UUID id) {
-        for (DiagramNode n : nodes) if (n.id().equals(id)) return n;
-        return null;
-    }
 }
-
-
-
-
-
-
-

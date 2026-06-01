@@ -3,14 +3,17 @@ package com.emalter.creatediagram.client.toolbar;
 import com.emalter.creatediagram.client.diagram.Color;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.Font;
+import com.emalter.creatediagram.client.diagram.DiagramMediator;
 
 public class ToolbarController {
     private final ToolbarModel model;
     private final ToolbarView view;
+    private final DiagramMediator mediator;
 
-    public ToolbarController() {
+    public ToolbarController(DiagramMediator mediator) {
         this.model = new ToolbarModel();
         this.view = new ToolbarView();
+        this.mediator = mediator;
     }
 
     // Metodi di input — ricevono click grezzi, traducono in azioni model
@@ -25,6 +28,7 @@ public class ToolbarController {
             int index = (int) ((mouseX - startX - 4) / 24);
             if (index >= 0 && index < tools.length) {
                 model.setCurrentTool(tools[index]);
+                if (mediator != null) mediator.onToolChanged();
                 int anchorX = startX + 4 + (index * 24);
                 if (tools[index] == Tool.PEN || tools[index] == Tool.LINE) {
                     // Open color menu and mark that we're awaiting a release selection
@@ -51,6 +55,7 @@ public class ToolbarController {
                 int index = (int) ((mouseX - menuX - 4) / 20);
                 if (index >= 0 && index < dyeColors.length) {
                     model.setCurrentColor(dyeColors[index]);
+                    if (mediator != null) mediator.onColorChanged();
                     model.setColorMenuOpen(false);
                     model.setAwaitingColorSelection(false);
                 }
@@ -78,6 +83,7 @@ public class ToolbarController {
             int index = (int) ((mouseX - menuX - 4) / 20);
             if (index >= 0 && index < dyeColors.length) {
                 model.setCurrentColor(dyeColors[index]);
+                if (mediator != null) mediator.onColorChanged();
             }
         }
 

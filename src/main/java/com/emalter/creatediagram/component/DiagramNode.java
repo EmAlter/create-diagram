@@ -10,7 +10,17 @@ import java.util.UUID;
 
 /**
  * Represents a node in the diagram with positional, visual and semantic properties.
- * The record contains fields for id, item type, position, property metadata, amount, color and sizing.
+ * The record contains:
+ * @param id Unique identifier for the node, used for connections and referencing.
+ * @param itemType The type of item or machine this node represents, used for rendering and logic
+ * @param x The x-coordinate of the node on the canvas.
+ * @param y The y-coordinate of the node on the canvas.
+ * @param property The property associated with the node.
+ * @param amount The amount of the item represented by the node.
+ * @param color The color of the node for visualization.
+ * @param width The width of the node.
+ * @param height The height of the node.
+ * 
  */
 public record DiagramNode(UUID id, String itemType, int x, int y, String property, int amount, int color, int width, int height) {
 
@@ -22,7 +32,7 @@ public record DiagramNode(UUID id, String itemType, int x, int y, String propert
     }
 
     /**
-     * Compatibility constructor for older saves that did not include width and height.
+     * Compatibility constructor for older saves that did not include color.
      */
     public DiagramNode(UUID id, String itemType, int x, int y, String property, int amount, int color) {
         this(id, itemType, x, y, property, amount, color, getDefaultWidth(itemType), getDefaultHeight(itemType));
@@ -37,7 +47,7 @@ public record DiagramNode(UUID id, String itemType, int x, int y, String propert
         return type.contains("mechanical_mixer") ? 60 : 40;
     }
 
-    // Codec used for disk serialization (NBT/JSON)
+
     public static final Codec<DiagramNode> CODEC = RecordCodecBuilder.create(instance ->
             instance.group(
                     UUIDUtil.CODEC.fieldOf("id").forGetter(DiagramNode::id),

@@ -1,13 +1,15 @@
 package com.emalter.creatediagram.client.toolbar;
 
-import com.emalter.creatediagram.logic.EmiHelper;
 import com.emalter.creatediagram.client.diagram.Color;
+import com.emalter.creatediagram.logic.integration.ModIntegration;
 import dev.emi.emi.api.stack.EmiStack;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 
 public class ToolbarView {
+    private final ModIntegration modIntegration = ModIntegration.get();
     public ToolbarView() {}
+    
 
     /*
     Toolbar rendering 
@@ -66,7 +68,7 @@ public class ToolbarView {
                     guiGraphics.fill(btnX - 2, btnY - 2, btnX + 18, btnY + 18, hovered ? 0xAAFFFFFF : 0x55FFFFFF);
                 }
 
-                EmiStack dyeStack = EmiHelper.getStack(dyeIds[i]);
+                EmiStack dyeStack = modIntegration.getStack(dyeIds[i]);
                 if (dyeStack != null) {
                     guiGraphics.pose().pushPose();
                     guiGraphics.pose().translate(btnX, btnY, 10);

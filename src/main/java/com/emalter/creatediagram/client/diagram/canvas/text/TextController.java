@@ -21,7 +21,6 @@ public class TextController {
     }
 
     public boolean mouseClicked(double worldX, double worldY, List<DiagramNode> nodes, int button) {
-        // 1. Se clicco fuori dal testo mentre scrivo, smetto di editare
         if (model.isEditing()) {
             UUID editingId = model.getEditingNodeId();
             DiagramNode editNode = findNode(nodes, editingId);
@@ -30,11 +29,9 @@ public class TextController {
                 model.stopEditing();
             }
         }
-
-        // I pulsanti UI (colore) funzionano solo col tasto sinistro
+        
         if (button != 0) return false;
-
-        // 2. Gestione del Menù Colori Aperto
+        
         if (model.isColorMenuOpen()) {
             UUID nodeId = model.getNodeWithOpenColorMenu();
             DiagramNode node = findNode(nodes, nodeId);
@@ -42,8 +39,7 @@ public class TextController {
                 Color[] colors = Color.values();
                 int menuX = model.getColorMenuX();
                 int menuY = model.getColorMenuY();
-
-                // Se clicco su un colore, aggiorno la lista dei nodi
+                
                 if (worldX >= menuX && worldX <= menuX + 20 && worldY >= menuY && worldY <= menuY + (colors.length * 20)) {
                     int clickedIndex = (int) ((worldY - menuY) / 20);
                     if (clickedIndex >= 0 && clickedIndex < colors.length) {
@@ -54,12 +50,10 @@ public class TextController {
                     }
                 }
             }
-            // Chiude il menù in ogni caso (sia se ho scelto un colore, sia se ho cliccato a vuoto)
             model.closeColorMenu();
             return true;
         }
-
-        // 3. Controllo apertura Menù Colori tramite il bottoncino laterale
+        
         for (DiagramNode node : nodes) {
             if (!node.itemType().equals("creatediagram:text_comment")) continue;
 
@@ -72,7 +66,7 @@ public class TextController {
                 int menuX = node.x() + w + 20;
                 int menuY = node.y() + (h / 2) - 8;
                 model.openColorMenu(node.id(), menuX, menuY);
-                return true; // Consuma il click
+                return true;
             }
         }
         

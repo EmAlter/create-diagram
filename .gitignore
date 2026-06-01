@@ -7,6 +7,14 @@
 # Gradle build folder
 build
 
+# --- Rich Text Implementation (Future version) ---
+# Java Classes
+src/main/java/com/emalter/creatediagram/client/diagram/canvas/text/utility/
+
+# Risources (JSON)
+src/main/resources/assets/creatediagram/textures/
+src/main/resources/assets/creatediagram/pixel_twemoji.json
+
 # IntelliJ
 out/
 .idea

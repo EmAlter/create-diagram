@@ -1,6 +1,7 @@
 package com.emalter.creatediagram.client.toolbar;
 
 import com.emalter.creatediagram.logic.EmiHelper;
+import com.emalter.creatediagram.logic.integration.ModIntegration;
 import dev.emi.emi.api.stack.EmiStack;
 
 public enum Tool {
@@ -10,6 +11,7 @@ public enum Tool {
 
     private final String toolTypeID;
     private final String shortLabel;
+    private final ModIntegration modIntegration = ModIntegration.get();;
 
     Tool(String toolType, String shortLabel) {
         this.toolTypeID = toolType;
@@ -24,7 +26,7 @@ public enum Tool {
      */
     public EmiStack getEmiStack() {
         try {
-            return EmiHelper.getStack(toolTypeID);
+            return modIntegration.getStack(toolTypeID);
         } catch (Exception e) {
             return null;
         }
