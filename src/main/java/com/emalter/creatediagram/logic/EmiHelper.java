@@ -7,14 +7,18 @@ import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class EmiHelper {
-    private static final Map<String, EmiStack> STACK_CACHE = new HashMap<>();
-    private static final Set<String> VALID_MACHINES = new HashSet<>();
-    private static final Set<String> VALID_INPUTS = new HashSet<>();
+    // 1. Thread-Safe Collections
+    private static final Map<String, EmiStack> STACK_CACHE = new ConcurrentHashMap<>();
+    private static final Set<String> VALID_MACHINES = Collections.synchronizedSet(new HashSet<>());
+    private static final Set<String> VALID_INPUTS = Collections.synchronizedSet(new HashSet<>());
     private static final Set<String> HIDDEN_MENU_ITEMS = Set.of("create:basin");
-    private static final Map<String, List<String>> catalystCache = new HashMap<>();
-    private static boolean isInitialized = false;
+    private static final Map<String, List<String>> catalystCache = new ConcurrentHashMap<>();
+
+    // Volatile assicura che il cambio di stato sia visibile istantaneamente a tutti i thread
+    private static volatile boolean isInitialized = false;
 
     public enum HeatLevel {
         NONE, HEATED, SUPERHEATED;
@@ -23,15 +27,17 @@ public class EmiHelper {
         }
     }
 
-    public static void initCache() {
+    // 2. Metodo Synchronized per impedire esecuzioni simultanee
+    public static synchronized void initCache() {
         if (isInitialized) return;
         if (EmiApi.getRecipeManager().getRecipes().isEmpty()) return;
 
+        // Estrazione base
         for (EmiStack stack : EmiApi.getIndexStacks()) {
             STACK_CACHE.putIfAbsent(stack.getId().toString(), stack);
         }
 
-        // QUI AVVIENE IL POPOLAMENTO DI VALID_MACHINES (Dove la neve viene erroneamente aggiunta)
+        // Estrazione macchinari
         for (EmiRecipeCategory category : EmiApi.getRecipeManager().getCategories()) {
             for (EmiIngredient workstation : EmiApi.getRecipeManager().getWorkstations(category)) {
                 for (EmiStack stack : workstation.getEmiStacks()) {
@@ -39,19 +45,31 @@ public class EmiHelper {
                     if (!id.equals("create:basin")) {
                         VALID_MACHINES.add(id);
                     }
+                    STACK_CACHE.putIfAbsent(id, stack);
                 }
             }
         }
 
+        // 3. FIX LIQUIDI: Itera sulle ricette per forzare il caching di fluidi e item nascosti
         for (EmiRecipe recipe : EmiApi.getRecipeManager().getRecipes()) {
             for (EmiIngredient req : recipe.getInputs()) {
-                for (EmiStack stack : req.getEmiStacks()) VALID_INPUTS.add(stack.getId().toString());
+                for (EmiStack stack : req.getEmiStacks()) {
+                    String id = stack.getId().toString();
+                    VALID_INPUTS.add(id);
+                    STACK_CACHE.putIfAbsent(id, stack); // Fondamentale per salvare la lava!
+                }
             }
             for (EmiIngredient cat : recipe.getCatalysts()) {
-                for (EmiStack stack : cat.getEmiStacks()) VALID_INPUTS.add(stack.getId().toString());
+                for (EmiStack stack : cat.getEmiStacks()) {
+                    String id = stack.getId().toString();
+                    VALID_INPUTS.add(id);
+                    STACK_CACHE.putIfAbsent(id, stack);
+                }
             }
             for (EmiStack out : recipe.getOutputs()) {
-                VALID_INPUTS.add(out.getId().toString());
+                String id = out.getId().toString();
+                VALID_INPUTS.add(id);
+                STACK_CACHE.putIfAbsent(id, out);
             }
         }
 
@@ -76,28 +94,6 @@ public class EmiHelper {
         return VALID_INPUTS.contains(id) || VALID_MACHINES.contains(id);
     }
 
-    // === METODO DI DEBUG AGGIUNTO ===
-    private static void debugCatalystPaths(String machineId) {
-        System.out.println("====== EMI DEBUGGING per " + machineId + " ======");
-        System.out.println("[DEBUG] Categorie associate alla macchina tramite getEmiCategories: ");
-        for(EmiRecipeCategory cat : getEmiCategories(new LinkedHashSet<>(), machineId)) {
-            System.out.println("  -> " + cat.getId());
-        }
-
-        System.out.println("\n[DEBUG] Scansione Workstation per Neve, Acqua e Fan (Path A):");
-        for (EmiRecipeCategory category : EmiApi.getRecipeManager().getCategories()) {
-            for (EmiIngredient ws : EmiApi.getRecipeManager().getWorkstations(category)) {
-                for (EmiStack stack : ws.getEmiStacks()) {
-                    String id = stack.getId().toString();
-                    if (id.contains("snow") || id.contains("industrial_fan") || id.contains("water") || id.contains("fire")) {
-                        System.out.println("[WS] Categoria=" + category.getId() + " | Stack=" + id + " | isMachine() dice: " + isMachine(id));
-                    }
-                }
-            }
-        }
-        System.out.println("==================================================");
-    }
-
     public static List<String> getValidCatalystsForMachine(String machineId) {
         if (!isInitialized) initCache();
 
@@ -105,12 +101,10 @@ public class EmiHelper {
             Set<String> catalysts = new LinkedHashSet<>();
             HeatLevel highestHeat = HeatLevel.NONE;
 
-            // Cerca esclusivamente il livello di calore massimo richiesto dalle ricette
             for (EmiRecipe recipe : getRecipesForMachine(id)) {
                 highestHeat = HeatLevel.max(highestHeat, getRecipeHeatLevel(recipe));
             }
 
-            // Aggiunge al menù solo gli item per il calore
             if (highestHeat != HeatLevel.NONE) {
                 catalysts.add("create:empty_blaze_burner");
                 catalysts.add("create:blaze_burner");
@@ -124,6 +118,7 @@ public class EmiHelper {
     }
 
     public static List<EmiRecipe> getRecipesForMachine(String machineId) {
+        if (!isInitialized) initCache(); // Sicurezza extra
         Set<EmiRecipeCategory> categories = getEmiCategories(new LinkedHashSet<>(), machineId);
         List<EmiRecipe> recipes = new ArrayList<>();
         for (EmiRecipeCategory category : categories) {
@@ -158,6 +153,7 @@ public class EmiHelper {
     }
 
     public static <C extends Collection<EmiRecipeCategory>> C getEmiCategories(C categories, String machineId) {
+        if (!isInitialized) initCache();
         for (EmiRecipeCategory category : EmiApi.getRecipeManager().getCategories()) {
             for (EmiIngredient workstation : EmiApi.getRecipeManager().getWorkstations(category)) {
                 for (EmiStack stack : workstation.getEmiStacks()) {

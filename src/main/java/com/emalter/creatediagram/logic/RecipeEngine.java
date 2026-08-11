@@ -20,7 +20,7 @@ public class RecipeEngine {
 
         for (EmiRecipeCategory category : validCategories) {
             for (EmiRecipe recipe : EmiApi.getRecipeManager().getRecipes(category)) {
-                if (calculateBatches(recipe.getInputs(), inputs) > 0 && matchesHeat(recipe, property)) {
+                if (calculateBatches(recipe, inputs).batches() > 0 && matchesHeat(recipe, property)) {
                     validRecipes.add(recipe);
                 }
             }
@@ -42,11 +42,14 @@ public class RecipeEngine {
             }
         }
 
-        int batches = calculateBatches(selectedRecipe.getInputs(), inputs);
+        // CORRETTO: Estraiamo sia batch che type in un'unica chiamata passando 'selectedRecipe'
+        BatchResult result = calculateBatches(selectedRecipe, inputs);
+        int batches = result.batches();
+        RecipeType recipeType = result.type();
+
         List<OutputPort> results = new ArrayList<>();
         List<EmiStack> emiOutputs = selectedRecipe.getOutputs();
 
-        // Estrazione sicura del nome del processo da mostrare nel tooltip
         String processName = "Unknown Process";
         try {
             processName = selectedRecipe.getCategory().getName().getString();
@@ -89,7 +92,7 @@ public class RecipeEngine {
             if (rawChance < 0f) rawChance = 0f;
             if (rawChance > 1f) rawChance = 1f;
 
-            results.add(new OutputPort(output.getId().toString(), rawChance, finalAmount, processName));
+            results.add(new OutputPort(output.getId().toString(), rawChance, finalAmount, processName, recipeType));
         }
         return results;
     }
@@ -125,7 +128,7 @@ public class RecipeEngine {
 
         for (EmiRecipeCategory category : validCategories) {
             for (EmiRecipe recipe : EmiApi.getRecipeManager().getRecipes(category)) {
-                if (calculateBatches(recipe.getInputs(), inputs) > 0 && matchesHeat(recipe, property)) {
+                if (calculateBatches(recipe, inputs).batches() > 0 && matchesHeat(recipe, property)) {
                     validRecipes.add(recipe);
                 }
             }
@@ -196,13 +199,20 @@ public class RecipeEngine {
         return true;
     }
 
-    private int calculateBatches(List<EmiIngredient> recipeInputs, Map<String, Integer> userInputs) {
+    private BatchResult calculateBatches(EmiRecipe recipe, Map<String, Integer> userInputs) {
+        List<EmiIngredient> recipeInputs = new ArrayList<>(recipe.getInputs());
+        recipeInputs.addAll(recipe.getCatalysts());
+
         if (recipeInputs.isEmpty()) {
-            return userInputs.isEmpty() ? 1 : 0;
+            return new BatchResult(userInputs.isEmpty() ? 1 : 0, RecipeType.INFINITE, List.of());
         }
+
+        String categoryId = recipe.getCategory().getId().toString();
+        boolean isForcedInfinite = categoryId.contains("extruding") || categoryId.contains("create_mechanical_extruder");
 
         Map<String, Long> aggregatedRequirements = new HashMap<>();
         Set<String> usedUserInputs = new HashSet<>();
+        List<String> infiniteInputs = new ArrayList<>();
 
         for (EmiIngredient req : recipeInputs) {
             if (req.isEmpty()) continue;
@@ -216,28 +226,97 @@ public class RecipeEngine {
                 }
             }
 
-            if (matchedId == null) return 0;
+            if (matchedId == null) return new BatchResult(0, RecipeType.STANDARD, List.of());
 
             usedUserInputs.add(matchedId);
-            aggregatedRequirements.put(matchedId, aggregatedRequirements.getOrDefault(matchedId, 0L) + req.getAmount());
+
+            boolean isCatalyst = recipe.getCatalysts().contains(req) || isForcedInfinite;
+            boolean isInherentlyInfinite = (req.getAmount() == 0 || isCatalyst);
+
+            if (isInherentlyInfinite) {
+                aggregatedRequirements.putIfAbsent(matchedId, 0L);
+                if (!infiniteInputs.contains(matchedId)) infiniteInputs.add(matchedId);
+            } else {
+                aggregatedRequirements.put(matchedId, aggregatedRequirements.getOrDefault(matchedId, 0L) + req.getAmount());
+            }
         }
 
-        if (usedUserInputs.size() < userInputs.size()) return 0;
+        if (usedUserInputs.size() < userInputs.size()) return new BatchResult(0, RecipeType.STANDARD, List.of());
 
         int maxBatches = Integer.MAX_VALUE;
+        boolean allReqsInfinite = true;
+        boolean someReqsInfinite = false;
+
         for (Map.Entry<String, Long> entry : aggregatedRequirements.entrySet()) {
             String id = entry.getKey();
             long requiredTotal = entry.getValue();
             int provided = userInputs.getOrDefault(id, 0);
 
-            if (requiredTotal <= 0) continue;
+            // Check if the requirement is satisfied infinitely (either inherently infinite or catalyst)
+            boolean isSatisfiedInfinitely = (requiredTotal <= 0) || (provided == Integer.MAX_VALUE);
+
+            if (isSatisfiedInfinitely) {
+                someReqsInfinite = true;
+                if (!infiniteInputs.contains(id)) infiniteInputs.add(id);
+            } else {
+                allReqsInfinite = false;
+            }
+
+            if (requiredTotal <= 0) {
+                if (provided < 1) return new BatchResult(0, RecipeType.STANDARD, List.of());
+                continue; // It is a catalyst or inherently infinite requirement, so we don't limit the batches based on this
+            }
+
+            if (provided == Integer.MAX_VALUE) {
+                continue; // The provided amount is infinite, so we can produce unlimited batches for this item
+            }
 
             int batchesForThisItem = (int) (provided / requiredTotal);
-            if (batchesForThisItem == 0) return 0;
+            if (batchesForThisItem == 0) return new BatchResult(0, RecipeType.STANDARD, List.of());
 
             maxBatches = Math.min(maxBatches, batchesForThisItem);
         }
+        
+        RecipeType finalType;
+        if (allReqsInfinite) finalType = RecipeType.INFINITE;
+        else if (someReqsInfinite) finalType = RecipeType.MIXED;
+        else finalType = RecipeType.STANDARD;
 
-        return maxBatches == Integer.MAX_VALUE ? 1 : maxBatches;
+        int finalBatches = maxBatches == Integer.MAX_VALUE ? 1 : maxBatches;
+        return new BatchResult(finalBatches, finalType, infiniteInputs);
+    }
+
+    public List<String> getInfiniteInputs(String machineId, String property, Map<String, Integer> inputs) {
+        if (inputs.isEmpty()) return List.of();
+
+        List<EmiRecipeCategory> validCategories = EmiHelper.getEmiCategories(new ArrayList<>(), machineId);
+        List<EmiRecipe> validRecipes = new ArrayList<>();
+
+        for (EmiRecipeCategory category : validCategories) {
+            for (EmiRecipe recipe : EmiApi.getRecipeManager().getRecipes(category)) {
+                if (calculateBatches(recipe, inputs).batches() > 0 && matchesHeat(recipe, property)) {
+                    validRecipes.add(recipe);
+                }
+            }
+        }
+
+        if (validRecipes.isEmpty()) return List.of();
+
+        validRecipes.sort((r1, r2) -> Integer.compare(calculateRecipeScore(r2.getInputs()), calculateRecipeScore(r1.getInputs())));
+
+        EmiRecipe selectedRecipe = validRecipes.getFirst();
+        String targetId = getTargetFromProperty(property);
+
+        if (targetId != null) {
+            for (EmiRecipe r : validRecipes) {
+                if (hasOutput(r, targetId)) {
+                    selectedRecipe = r;
+                    break;
+                }
+            }
+        }
+
+        // Restituisce la lista degli ID estratti dal record BatchResult
+        return calculateBatches(selectedRecipe, inputs).infiniteInputs();
     }
 }

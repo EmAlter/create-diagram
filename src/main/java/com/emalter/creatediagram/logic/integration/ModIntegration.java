@@ -3,10 +3,8 @@ package com.emalter.creatediagram.logic.integration;
 import com.emalter.creatediagram.component.OutputPort;
 import com.emalter.creatediagram.logic.EmiHelper;
 import com.emalter.creatediagram.logic.RecipeEngine;
-import dev.emi.emi.api.recipe.EmiRecipeCategory;
 import dev.emi.emi.api.stack.EmiStack;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -42,20 +40,17 @@ public final class ModIntegration {
     public List<String> getValidCatalystsForMachine(String machineId) {
         return EmiHelper.getValidCatalystsForMachine(machineId);
     }
-
-    public static <C extends Collection<EmiRecipeCategory>> C getEmiCategories(C categories, String machineId) {
-        return EmiHelper.getEmiCategories(categories, machineId);
-    }
     
-    public EmiStack createEmptyStack() {return EmiStack.EMPTY;}
-    
-    // RecipeEngine
     public List<OutputPort> getOutputs(String machineId, String property, Map<String, Integer> inputs) {
         return recipeEngine.getOutputs(machineId, property, inputs);
     }
 
     public String getNextAlternativeTarget(String machineId, String property, Map<String, Integer> inputs) {
         return recipeEngine.getNextAlternativeTarget(machineId, property, inputs);
+    }
+
+    public List<String> getInfiniteInputs(String machineId, String property, Map<String, Integer> inputs) {
+        return recipeEngine.getInfiniteInputs(machineId, property, inputs);
     }
     
 }

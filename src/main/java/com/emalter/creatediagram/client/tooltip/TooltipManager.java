@@ -1,6 +1,7 @@
 package com.emalter.creatediagram.client.tooltip;
 
 import com.emalter.creatediagram.component.OutputPort;
+import com.emalter.creatediagram.logic.RecipeType;
 import dev.emi.emi.api.stack.EmiStack;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
@@ -44,6 +45,10 @@ public class TooltipManager {
         if (chancePercent > 100) chancePercent = 100;
 
         tooltip.add(Component.literal(chancePercent + "%").withStyle(chancePercent == 100 ? ChatFormatting.GREEN : ChatFormatting.GRAY));
+        
+        if (out.recipeType() == RecipeType.INFINITE) {
+            tooltip.add(Component.literal("∞ Infinite").withStyle(ChatFormatting.AQUA, ChatFormatting.ITALIC));
+        }
 
         return tooltip;
     }

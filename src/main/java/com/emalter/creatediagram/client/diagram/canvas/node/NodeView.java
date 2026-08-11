@@ -84,7 +84,8 @@ public class NodeView {
             emiStack.render(guiGraphics, 0, 0, 0f);
             guiGraphics.pose().popPose();
         }
-
+        
+        // Render the amount text for non-machine nodes
         if (!machineFlag) {
             float txtScale = Math.max(1.0f, Math.min(scaleX, scaleY) * 0.8f);
             String qtyText = emiStack.getItemStack().isEmpty() ? node.amount() + "mB" : String.valueOf(node.amount());
@@ -96,7 +97,8 @@ public class NodeView {
             guiGraphics.drawString(font, qtyText, -textWidth, 0, textColor, true);
             guiGraphics.pose().popPose();
         }
-
+        
+        // Render the catalyst slot if applicable
         if (hasCatalyst) {
             int slotX = node.x() + 4;
             int slotY = node.y() + h - 18;

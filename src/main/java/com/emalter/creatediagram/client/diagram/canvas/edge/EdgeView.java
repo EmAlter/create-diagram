@@ -38,7 +38,7 @@ public class EdgeView {
             renderDraggingConnection(guiGraphics, model, canvasController);
         }
     }
-
+    
     private void renderEdge(GuiGraphics guiGraphics, DiagramEdge edge, CanvasController canvasController, Font font, EdgeModel model) {
         DiagramNode from = canvasController.findNode(edge.fromNode());
         DiagramNode to = canvasController.findNode(edge.toNode());
@@ -65,10 +65,13 @@ public class EdgeView {
 
         drawBezierCurve(guiGraphics, startX, startY, endX, endY, 0xFFFFAA00);
 
+        // RIPRISTINATO: Il badge grafico compare solo in uscita da un macchinario
         if (canvasController.isMachine(from.itemType())) {
             int[] midPoint = getBezierMidPoint(startX, startY, endX, endY);
             int badgeX = midPoint[0] - 8;
             int badgeY = midPoint[1] - 6;
+
+            boolean isInfinite = canvasController.isEdgeInfinite(edge);
 
             guiGraphics.fill(badgeX, badgeY, badgeX + 16, badgeY + 12, 0xFF222222);
             guiGraphics.renderOutline(badgeX, badgeY, 16, 12, edge == model.getEdgeWithOpenSlider() ? 0xFFFFAA00 : 0xFF888888);
@@ -76,7 +79,11 @@ public class EdgeView {
             guiGraphics.pose().pushPose();
             guiGraphics.pose().translate(badgeX + 1, badgeY + 2, 10);
             guiGraphics.pose().scale(0.8f, 0.8f, 1.0f);
-            guiGraphics.drawString(font, "x" + edge.amount(), 0, 0, 0xFFFFFFFF, true);
+
+            String textToDraw = isInfinite ? "∞" : ("x" + edge.amount());
+            int textColor = isInfinite ? 0xFF55FFFF : 0xFFFFFFFF;
+
+            guiGraphics.drawString(font, textToDraw, 0, 0, textColor, true);
             guiGraphics.pose().popPose();
         }
     }

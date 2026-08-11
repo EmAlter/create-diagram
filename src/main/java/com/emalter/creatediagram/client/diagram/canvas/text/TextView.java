@@ -1,5 +1,6 @@
 package com.emalter.creatediagram.client.diagram.canvas.text;
 
+import com.emalter.creatediagram.client.diagram.canvas.text.utility.RichTextEngine;
 import com.emalter.creatediagram.component.DiagramNode;
 import com.emalter.creatediagram.client.diagram.Color;
 import dev.emi.emi.api.stack.EmiStack;
@@ -54,10 +55,35 @@ public class TextView {
         int textY = node.y() + 4;
 
         if (isEditingThis) {
+            // MENTRE SCRIVI: Mostriamo il testo grezzo e il cursore lampeggiante
             guiGraphics.drawWordWrap(font, FormattedText.of(model.getDisplayText()), textX, textY, w - 8, 0xFF000000);
+
+            // DISEGNO DEL MENU SUGGERIMENTI PER I GIOCATORI
+            List<String> suggestions = model.getSuggestions();
+            if (!suggestions.isEmpty()) {
+                int suggX = node.x();
+                int suggY = node.y() + h + 2;
+                int suggW = 120;
+                int suggH = suggestions.size() * 12;
+
+                guiGraphics.pose().pushPose();
+                guiGraphics.pose().translate(0, 0, 300); // Lo portiamo in primo piano
+                guiGraphics.fill(suggX, suggY, suggX + suggW, suggY + suggH, 0xEE222222);
+                guiGraphics.renderOutline(suggX, suggY, suggW, suggH, 0xFFFFAA00);
+
+                for (int i = 0; i < suggestions.size(); i++) {
+                    int itemY = suggY + (i * 12);
+                    if (i == model.getSuggestionIndex()) {
+                        guiGraphics.fill(suggX + 1, itemY, suggX + suggW - 1, itemY + 12, 0xFF555555); // Evidenzia
+                    }
+                    guiGraphics.drawString(font, suggestions.get(i), suggX + 4, itemY + 2, 0xFFFFFFFF, false);
+                }
+                guiGraphics.pose().popPose();
+            }
+
         } else {
-            // Disegna il testo normale quando l'editing è finito
-            guiGraphics.drawWordWrap(font, FormattedText.of(node.property()), textX, textY, w - 8, 0xFF000000);
+            // QUANDO HAI FINITO DI SCRIVERE: Entra in gioco la magia delle faccine!
+            RichTextEngine.renderRichText(guiGraphics, font, node.property(), textX, textY, w - 8, 0xFF000000);
         }
 
         int btnX = node.x() + w + 2;

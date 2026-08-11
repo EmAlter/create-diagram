@@ -24,6 +24,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
+import java.sql.NClob;
 import java.util.*;
 
 public class CanvasController {
@@ -70,8 +71,7 @@ public class CanvasController {
         NodeController nc = new NodeController(nm, nv);
         this.model.nodeController = nc;
     }
-
-    // Rimosso il parametro paletteWidth
+    
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, int screenWidth, int screenHeight) {
         // 1. Usa il Mediator per parlare con il MenuController!
         int paletteWidth = mediator.getPalette().getIsOpen() ? mediator.getPalette().getWidth() : 0;
@@ -97,12 +97,10 @@ public class CanvasController {
         edges.removeIf(edge -> {
             DiagramNode fromNode = findNode(edge.fromNode());
             if (fromNode == null) return true;
-
             if (!isMachine(fromNode.itemType())) return false;
 
             List<OutputPort> validOutputs = getDynamicOutputs(fromNode);
             boolean isValid = validOutputs.stream().anyMatch(out -> out.itemId().equals(edge.outputItem()));
-
             if (!isValid && model.edgeController.getModel().getEdgeWithOpenSlider() == edge) {
                 model.edgeController.getModel().setEdgeWithOpenSlider(null);
                 model.edgeController.getModel().setDraggingSlider(false);
@@ -114,6 +112,8 @@ public class CanvasController {
             if (!isMachine(node.itemType())) continue;
             List<OutputPort> validOutputs = getDynamicOutputs(node);
             for (OutputPort out : validOutputs) {
+                // NUOVO: Non forzare il bilanciamento/rimozione se l'output è infinito!
+                if (out.recipeType() == com.emalter.creatediagram.logic.RecipeType.INFINITE) continue;
                 balanceEdges(node.id(), out.itemId(), out.amount());
             }
         }
@@ -142,12 +142,16 @@ public class CanvasController {
         int maxAllowed = 1;
         if (isMachine(fromNode.itemType())) {
             for (OutputPort out : getDynamicOutputs(fromNode)) {
-                if (out.itemId().equals(outputItem)) { maxAllowed = out.amount(); break; }
+                if (out.itemId().equals(outputItem)) {
+                    // NUOVO: Se l'output è infinito, diamo disponibilità illimitata di archi
+                    if (out.recipeType() == com.emalter.creatediagram.logic.RecipeType.INFINITE) return 99999;
+                    maxAllowed = out.amount();
+                    break;
+                }
             }
         } else {
             maxAllowed = fromNode.amount();
         }
-
         int used = 0;
         for (DiagramEdge edge : getEdges()) {
             if (edge.fromNode().equals(fromNode.id()) && edge.outputItem().equals(outputItem)) used += edge.amount();
@@ -453,6 +457,19 @@ public class CanvasController {
             int idx = model.nodes.indexOf(node);
             model.nodes.set(idx, new DiagramNode(node.id(), node.itemType(), node.x(), node.y(), model.textController.getEditedText(), node.amount(), node.color(), node.width(), node.height()));
         }
+    }
+
+    public boolean isEdgeInfinite(DiagramEdge edge) {
+        DiagramNode fromNode = findNode(edge.fromNode());
+        // Infinite edges are only valid if the source node is a machine and the output port is marked as infinite.
+        if (fromNode == null || !isMachine(fromNode.itemType())) return false;
+
+        for (OutputPort out : getDynamicOutputs(fromNode)) {
+            if (out.itemId().equals(edge.outputItem())) {
+                return out.recipeType() == com.emalter.creatediagram.logic.RecipeType.INFINITE;
+            }
+        }
+        return false;
     }
 
     public void setCurrentTool(Tool tool) { this.model.currentTool = tool; }

@@ -10,14 +10,13 @@ import java.util.regex.Pattern;
 
 public class RichTextEngine {
     
-    /* TODO: Riabilitare la Regex per il Rich Text in futuro
     private static final Pattern RICH_TEXT_PATTERN = Pattern.compile("(@[a-zA-Z0-9_]{1,16})|(:[a-zA-Z0-9_:]+:)");
-    */
+    
+    public RichTextEngine() {}
 
     public static void renderRichText(GuiGraphics guiGraphics, Font font, String text, int startX, int startY, int maxWidth, int color) {
         if (text == null || text.isEmpty()) return;
 
-        /* TODO: Riabilitare il motore di rendering per icone e tag in futuro
         int currentX = startX;
         int currentY = startY;
         int iconSize = font.lineHeight;
@@ -32,29 +31,20 @@ public class RichTextEngine {
             currentY = pos[1];
 
             String match = matcher.group();
-
+            
             if (currentX + iconSize > startX + maxWidth && currentX > startX) {
                 currentX = startX;
                 currentY += font.lineHeight + 2;
             }
-
+            
             if (match.startsWith("@")) {
                 drawPlayerHead(guiGraphics, match.substring(1), currentX, currentY, iconSize);
                 currentX += iconSize + 1;
-            } else if (match.startsWith(":")) {
-                drawEmoji(guiGraphics, font, match.substring(1, match.length() - 1), currentX, currentY, iconSize);
-                currentX += iconSize + 1;
             }
-
+            
             lastEnd = matcher.end();
         }
-
         drawWrappedText(guiGraphics, font, text.substring(lastEnd), currentX, currentY, startX, maxWidth, color);
-        return;
-        */
-
-        // Comportamento attuale: stampa solo il testo normale mandandolo a capo
-        drawWrappedText(guiGraphics, font, text, startX, startY, startX, maxWidth, color);
     }
 
     private static int[] drawWrappedText(GuiGraphics guiGraphics, Font font, String text, int currentX, int currentY, int startX, int maxWidth, int color) {
@@ -82,8 +72,16 @@ public class RichTextEngine {
         return new int[]{currentX, currentY};
     }
 
-    /* TODO: Riabilitare i metodi di rendering grafico in futuro
-    private static void drawPlayerHead(GuiGraphics guiGraphics, String playerName, int x, int y, int size) { ... }
-    private static void drawEmoji(GuiGraphics guiGraphics, Font font, String emojiName, int x, int y, int size) { ... }
-    */
+    
+    private static void drawPlayerHead(GuiGraphics guiGraphics, String playerName, int x, int y, int size) { 
+        
+        ResourceLocation skinTexture = PlayerSkinCache.getSkinTexture(playerName);
+        if (skinTexture == null) return;
+
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0, 0, 1);
+        RenderSystem.setShaderTexture(0, skinTexture);
+        guiGraphics.blit(skinTexture, x, y, 8, 8, 8, 8, 64, 64);
+        guiGraphics.pose().popPose();
+    }
 }

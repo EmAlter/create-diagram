@@ -53,10 +53,15 @@ public class EdgeController {
             for (DiagramEdge edge : model.getEdges()) {
                 DiagramNode from = canvasController.findNode(edge.fromNode());
                 DiagramNode to = canvasController.findNode(edge.toNode());
+                
                 if (from != null && to != null && canvasController.isMachine(from.itemType())) {
                     int[] mid = view.getBezierMidPointForEdge(edge, canvasController);
                     if (mid != null && worldX >= mid[0] - 8 && worldX <= mid[0] + 8 && worldY >= mid[1] - 6 && worldY <= mid[1] + 6) {
-                        openSlider(edge, from, canvasController, mid);
+
+                        // Blocca l'apertura dello slider se l'output è marcato come infinito
+                        if (!canvasController.isEdgeInfinite(edge)) {
+                            openSlider(edge, from, canvasController, mid);
+                        }
                         return true;
                     }
                 }

@@ -2,6 +2,7 @@ package com.emalter.creatediagram.client.diagram.canvas.text;
 
 import com.emalter.creatediagram.component.DiagramNode;
 import com.emalter.creatediagram.client.diagram.Color;
+import com.emalter.creatediagram.client.diagram.canvas.text.utility.RichTextEngine;
 import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.List;

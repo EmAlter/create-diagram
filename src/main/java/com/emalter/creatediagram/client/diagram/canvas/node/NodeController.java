@@ -39,4 +39,13 @@ public class NodeController {
         }
         return null;
     }
+    
+    public NodeModel getModel() {
+        return model;
+    }
+    
+    public NodeView getView() {
+        return view;
+    }
+    
 }

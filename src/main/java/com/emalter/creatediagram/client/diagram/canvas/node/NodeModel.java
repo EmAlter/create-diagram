@@ -16,7 +16,7 @@ public class NodeModel {
         CacheEntry(List<OutputPort> o, long t) { this.outputs = o; this.timestamp = t; }
     }
 
-    // Cache ricalcolo outputs per singolo nodo
+
     private final Map<UUID, CacheEntry> outputCache = new HashMap<>();
 
     private boolean isMachine(String id) {
@@ -27,7 +27,7 @@ public class NodeModel {
         long currentTime = System.currentTimeMillis();
         CacheEntry entry = outputCache.get(node.id());
 
-        // Mantiene in memoria il calcolo per 250ms per ogni nodo singolarmente
+        // Keeps in cache for 250ms to avoid recalculating outputs too frequently
         if (entry != null && (currentTime - entry.timestamp < 250)) {
             return entry.outputs;
         }
@@ -57,6 +57,7 @@ public class NodeModel {
                 if (fromNode != null) {
                     String itemId;
                     int amountToAdd = 0;
+                    boolean isInfinite = false;
 
                     if (!isMachine(fromNode.itemType())) {
                         itemId = fromNode.itemType();
@@ -64,8 +65,27 @@ public class NodeModel {
                     } else {
                         itemId = edge.outputItem();
                         amountToAdd = edge.amount();
+
+                        // Check if the output from the machine is infinite by traversing its outputs
+                        Set<UUID> nextVisited = new HashSet<>(visited);
+                        List<OutputPort> fromOutputs = getDynamicOutputsInternal(fromNode, allNodes, edges, nextVisited);
+                        for (OutputPort out : fromOutputs) {
+                            if (out.itemId().equals(itemId) && out.recipeType() == com.emalter.creatediagram.logic.RecipeType.INFINITE) {
+                                isInfinite = true;
+                                break;
+                            }
+                        }
                     }
-                    if (amountToAdd > 0) incoming.put(itemId, incoming.getOrDefault(itemId, 0) + amountToAdd);
+
+                    if (isInfinite) {
+                        // Used MIX.VALUE to represent infinite amount
+                        incoming.put(itemId, Integer.MAX_VALUE);
+                    } else if (amountToAdd > 0) {
+                        int current = incoming.getOrDefault(itemId, 0);
+                        if (current != Integer.MAX_VALUE) {
+                            incoming.put(itemId, current + amountToAdd);
+                        }
+                    }
                 }
             }
         }

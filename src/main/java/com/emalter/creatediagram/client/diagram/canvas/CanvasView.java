@@ -2,6 +2,7 @@ package com.emalter.creatediagram.client.diagram.canvas;
 
 import com.emalter.creatediagram.component.DiagramNode;
 import com.emalter.creatediagram.component.OutputPort;
+import com.emalter.creatediagram.client.tooltip.TooltipManager;
 import dev.emi.emi.api.stack.EmiStack;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -81,9 +82,7 @@ public class CanvasView {
         if (controller.getNodeWithOpenMenu() == null && controller.getActiveAmountField() == null && (controller.getTextModel() == null || !controller.getTextModel().isEditing())) {
             for (DiagramNode node : controller.getNodes()) {
                 if (node.itemType().equals("creatediagram:text_comment")) continue;
-
-                // OTTIMIZZAZIONE SPAZIALE: Se il cursore è molto lontano dal nodo, ignora completamente
-                // il calcolo delle porte e risparmia CPU preziose.
+                
                 if (worldX < node.x() - 20 || worldX > node.x() + node.width() + 40 ||
                         worldY < node.y() - 100 || worldY > node.y() + node.height() + 100) {
                     continue;
@@ -102,8 +101,8 @@ public class CanvasView {
                         if (worldX >= outX && worldX <= outX + 16 && worldY >= outY && worldY <= outY + 16) {
                             OutputPort port = ports.get(i);
                             EmiStack portStack = controller.getStack(port.itemId());
-                            List<Component> tooltip = com.emalter.creatediagram.client.tooltip.TooltipManager.getOutputTooltip(portStack, port);
-                            com.emalter.creatediagram.client.tooltip.TooltipManager.renderTooltip(guiGraphics, this.font, tooltip, mouseX, mouseY);
+                            List<Component> tooltip = TooltipManager.getOutputTooltip(portStack, port);
+                            TooltipManager.renderTooltip(guiGraphics, this.font, tooltip, mouseX, mouseY);
                             tooltipDrawn = true;
                             break;
                         }
