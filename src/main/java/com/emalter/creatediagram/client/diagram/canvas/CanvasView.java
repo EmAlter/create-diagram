@@ -1,8 +1,10 @@
 package com.emalter.creatediagram.client.diagram.canvas;
 
+import com.emalter.creatediagram.client.diagram.ZLayers;
 import com.emalter.creatediagram.component.DiagramNode;
 import com.emalter.creatediagram.component.OutputPort;
 import com.emalter.creatediagram.client.tooltip.TooltipManager;
+import com.emalter.creatediagram.client.toolbar.Tool;
 import dev.emi.emi.api.stack.EmiStack;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -41,25 +43,35 @@ public class CanvasView {
             drawStroke(guiGraphics, stroke);
         }
 
-        if (controller.getCurrentTool() == com.emalter.creatediagram.client.toolbar.Tool.PEN && controller.getCurrentStrokePoints() != null && controller.getCurrentStrokePoints().size() > 1) {
+        if (controller.getCurrentTool() == Tool.PEN && controller.getCurrentStrokePoints() != null && controller.getCurrentStrokePoints().size() > 1) {
             drawStroke(guiGraphics, new CanvasModel.DiagramStroke(null, controller.getCurrentColor(), controller.getCurrentStrokePoints()));
         }
-        if (controller.getCurrentTool() == com.emalter.creatediagram.client.toolbar.Tool.LINE && controller.isDrawingLine()) {
+        if (controller.getCurrentTool() == Tool.LINE && controller.isDrawingLine()) {
             drawFastLine(guiGraphics, controller.getLineStartX(), controller.getLineStartY(), controller.getLineCurrentX(), controller.getLineCurrentY(), controller.getCurrentColor());
         }
 
         if (controller.getEdgeController() != null) controller.getEdgeController().render(guiGraphics, controller, worldX, worldY);
-        
+
         for (DiagramNode node : controller.getNodes()) {
-            boolean isInvalid = (node == controller.getDraggedNode()) && !controller.isPositionValid(node.x(), node.y(), node.width(), node.height(), node.id());
-            controller.getNodeController().renderNodeAndPorts(guiGraphics, node, isInvalid, controller.getNodes(), controller.getEdges());
+            boolean isDragged = (node == controller.getDraggedNode());
+            boolean isInvalid = isDragged && !controller.isPositionValid(node.x(), node.y(), node.width(), node.height(), node.id());
+
+            if (isDragged) {
+                // Solleva l'intero nodo (sfondo, item, testi) sopra tutti gli altri nodi
+                guiGraphics.pose().pushPose();
+                guiGraphics.pose().translate(0, 0, ZLayers.DRAG_OFFSET);
+                controller.getNodeController().renderNodeAndPorts(guiGraphics, node, isInvalid, controller.getNodes(), controller.getEdges());
+                guiGraphics.pose().popPose();
+            } else {
+                controller.getNodeController().renderNodeAndPorts(guiGraphics, node, isInvalid, controller.getNodes(), controller.getEdges());
+            }
         }
 
         if (controller.getNodeWithOpenMenu() != null) {
             DiagramNode menuNode = controller.findNode(controller.getNodeWithOpenMenu());
             if (menuNode != null) {
                 guiGraphics.pose().pushPose();
-                guiGraphics.pose().translate(0, 0, 250);
+                guiGraphics.pose().translate(0, 0, ZLayers.CANVAS_POPUP);
                 controller.getNodeController().renderCatalystMenu(guiGraphics, menuNode);
                 guiGraphics.pose().popPose();
             }
@@ -71,7 +83,7 @@ public class CanvasView {
 
         if (controller.getActiveAmountField() != null && controller.getNodeWithActiveAmountField() != null) {
             guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, 4);
+            guiGraphics.pose().translate(0, 0, ZLayers.CANVAS_POPUP);
             controller.getActiveAmountField().render(guiGraphics, (int) worldX, (int) worldY, partialTick);
             guiGraphics.pose().popPose();
         }
@@ -113,15 +125,15 @@ public class CanvasView {
 
                 if (worldX >= node.x() && worldX <= node.x() + node.width() && worldY >= node.y() && worldY <= node.y() + node.height()) {
                     EmiStack nodeStack = controller.getStack(node.itemType());
-                    List<Component> tooltip = com.emalter.creatediagram.client.tooltip.TooltipManager.getBaseTooltip(nodeStack);
-                    com.emalter.creatediagram.client.tooltip.TooltipManager.renderTooltip(guiGraphics, this.font, tooltip, mouseX, mouseY);
+                    List<Component> tooltip = TooltipManager.getBaseTooltip(nodeStack);
+                    TooltipManager.renderTooltip(guiGraphics, this.font, tooltip, mouseX, mouseY);
                     break;
                 }
             }
         }
 
         guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 500);
+        guiGraphics.pose().translate(0, 0, ZLayers.ZOOM);
         guiGraphics.drawString(this.font, "Zoom: " + Math.round(controller.getZoom() * 100) + "%", 10, 10, 0xFFFFFFFF, true);
         guiGraphics.pose().popPose();
     }

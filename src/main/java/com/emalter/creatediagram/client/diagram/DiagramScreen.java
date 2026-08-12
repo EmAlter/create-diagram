@@ -66,7 +66,7 @@ public class DiagramScreen extends Screen implements DiagramMediator {
         this.toolbar.render(guiGraphics, mouseX, mouseY, this.width, this.height, currentPaletteWidth, this.font);
 
         guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 400);
+        guiGraphics.pose().translate(0, 0, ZLayers.SIDE_MENU);       
         this.palette.render(guiGraphics, mouseX, mouseY, partialTick);
         guiGraphics.pose().popPose();
     }

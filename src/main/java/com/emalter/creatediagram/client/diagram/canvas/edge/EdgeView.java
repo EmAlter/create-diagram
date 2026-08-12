@@ -77,7 +77,7 @@ public class EdgeView {
             guiGraphics.renderOutline(badgeX, badgeY, 16, 12, edge == model.getEdgeWithOpenSlider() ? 0xFFFFAA00 : 0xFF888888);
 
             guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(badgeX + 1, badgeY + 2, 10);
+            guiGraphics.pose().translate(badgeX + 1, badgeY + 2, 20);
             guiGraphics.pose().scale(0.8f, 0.8f, 1.0f);
 
             String textToDraw = isInfinite ? "∞" : ("x" + edge.amount());
@@ -93,7 +93,7 @@ public class EdgeView {
         int sliderMin = model.getSliderMin(), sliderMax = model.getSliderMax(), sliderValue = model.getSliderValue();
 
         guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 300);
+        guiGraphics.pose().translate(0, 0, 40);
 
         guiGraphics.fill(sliderX - 10, sliderY - 15, sliderX + sliderWidth + 10, sliderY + sliderHeight + 10, 0xEE222222);
         guiGraphics.renderOutline(sliderX - 10, sliderY - 15, sliderWidth + 20, sliderHeight + 25, 0xFFFFAA00);

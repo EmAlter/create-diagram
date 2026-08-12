@@ -1,5 +1,6 @@
 package com.emalter.creatediagram.client.diagram.canvas.text;
 
+import com.emalter.creatediagram.client.diagram.ZLayers;
 import com.emalter.creatediagram.client.diagram.canvas.text.utility.RichTextEngine;
 import com.emalter.creatediagram.component.DiagramNode;
 import com.emalter.creatediagram.client.diagram.Color;
@@ -22,7 +23,16 @@ public class TextView {
     public void render(GuiGraphics guiGraphics, List<DiagramNode> nodes, TextModel model, UUID draggedNodeId) {
         for (DiagramNode node : nodes) {
             if (node.itemType().equals("creatediagram:text_comment")) {
-                renderTextNode(guiGraphics, node, model, draggedNodeId);
+                boolean isDragged = node.id().equals(draggedNodeId);
+
+                if (isDragged) {
+                    guiGraphics.pose().pushPose();
+                    guiGraphics.pose().translate(0, 0, ZLayers.DRAG_OFFSET);
+                    renderTextNode(guiGraphics, node, model, draggedNodeId);
+                    guiGraphics.pose().popPose();
+                } else {
+                    renderTextNode(guiGraphics, node, model, draggedNodeId);
+                }
             }
         }
 
@@ -31,7 +41,7 @@ public class TextView {
             DiagramNode node = findNode(nodes, nodeId);
             if (node != null) {
                 guiGraphics.pose().pushPose();
-                guiGraphics.pose().translate(0, 0, 250);
+                guiGraphics.pose().translate(0, 0, ZLayers.CANVAS_POPUP);
                 renderColorMenu(guiGraphics, node, model);
                 guiGraphics.pose().popPose();
             }
@@ -49,7 +59,7 @@ public class TextView {
         guiGraphics.renderOutline(node.x(), node.y(), w, h, 0xFF000000);
 
         guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 1);
+        guiGraphics.pose().translate(0, 0, ZLayers.NODE_CONTENT);
 
         int textX = node.x() + 4;
         int textY = node.y() + 4;
@@ -67,7 +77,7 @@ public class TextView {
                 int suggH = suggestions.size() * 12;
 
                 guiGraphics.pose().pushPose();
-                guiGraphics.pose().translate(0, 0, 300); // Lo portiamo in primo piano
+                guiGraphics.pose().translate(0, 0, ZLayers.CANVAS_POPUP);
                 guiGraphics.fill(suggX, suggY, suggX + suggW, suggY + suggH, 0xEE222222);
                 guiGraphics.renderOutline(suggX, suggY, suggW, suggH, 0xFFFFAA00);
 

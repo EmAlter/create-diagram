@@ -1,5 +1,6 @@
 package com.emalter.creatediagram.client.tooltip;
 
+import com.emalter.creatediagram.client.diagram.ZLayers;
 import com.emalter.creatediagram.component.OutputPort;
 import com.emalter.creatediagram.logic.RecipeType;
 import dev.emi.emi.api.stack.EmiStack;
@@ -83,7 +84,7 @@ public class TooltipManager {
     // --- UTILITY RENDERING ---
     public static void renderTooltip(GuiGraphics gui, Font font, List<Component> tooltip, int mouseX, int mouseY) {
         gui.pose().pushPose();
-        gui.pose().translate(0, 0, 400);
+        gui.pose().translate(0, 0, ZLayers.TOOLTIP);
         gui.renderTooltip(font, tooltip, Optional.empty(), mouseX, mouseY);
         gui.pose().popPose();
     }
